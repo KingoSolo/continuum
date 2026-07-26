@@ -1,0 +1,15 @@
+{
+  "name": "@continuum/prompts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --project tsconfig.json --noEmit",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "echo 'No tests configured for @continuum/prompts'"
+  },
+  "devDependencies": {
+    "@continuum/config": "workspace:*"
+  }
+}

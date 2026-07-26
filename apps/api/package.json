@@ -1,0 +1,14 @@
+{
+  "name": "@continuum/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --project tsconfig.json --noEmit",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "echo 'No tests configured for @continuum/api'"
+  },
+  "devDependencies": {
+    "@continuum/config": "workspace:*"
+  }
+}
