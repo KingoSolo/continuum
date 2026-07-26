@@ -34,8 +34,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        # Generation reads the schema only; it neither migrates nor connects to CockroachDB.
+        run: pnpm db:generate
+
       - name: Build
-        run: pnpm build
+        run: pnpm exec turbo run build
 
       - name: Typecheck
         run: pnpm typecheck
