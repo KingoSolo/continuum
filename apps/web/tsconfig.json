@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "declaration": true,
     "jsx": "preserve"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
