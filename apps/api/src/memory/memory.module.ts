@@ -6,7 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import { MemoryApiService } from './memory-api.service.js';
 import { MemoryController } from './memory.controller.js';
 
-class PrismaService extends PrismaClient implements OnModuleDestroy {
+export class PrismaService extends PrismaClient implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
   }
@@ -16,13 +16,21 @@ class PrismaService extends PrismaClient implements OnModuleDestroy {
   controllers: [MemoryController],
   providers: [
     PrismaService,
+    { provide: 'PRISMA_SERVICE', useExisting: PrismaService },
     {
       provide: MemoryEngineService,
       useFactory: (prisma: PrismaService) => new MemoryEngineService(prisma),
       inject: [PrismaService],
     },
+    { provide: 'MEMORY_ENGINE', useExisting: MemoryEngineService },
     MemoryApiService,
   ],
-  exports: [MemoryEngineService, MemoryApiService],
+  exports: [
+    PrismaService,
+    'PRISMA_SERVICE',
+    MemoryEngineService,
+    'MEMORY_ENGINE',
+    MemoryApiService,
+  ],
 })
 export class MemoryModule {}
