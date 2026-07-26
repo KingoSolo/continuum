@@ -376,6 +376,7 @@ model Debate {
   importance          Importance   @default(HIGH)
   convenedAt          DateTime     @default(now()) @db.Timestamptz(3)
   resolvedAt          DateTime?    @db.Timestamptz(3)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime     @updatedAt @db.Timestamptz(3)
 
   mission      Mission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
@@ -479,6 +480,8 @@ model KnowledgeVault {
   createdAt   DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
 
+  // Vault admission is explicit: a lesson is reusable only through an entry
+  // with stewardship, review, and status—not merely because it is validated.
   entries KnowledgeVaultEntry[]
 }
 
@@ -490,6 +493,8 @@ model KnowledgeVaultEntry {
   status         VaultEntryStatus @default(ACTIVE)
   admittedAt     DateTime         @default(now()) @db.Timestamptz(3)
   reviewAt       DateTime?        @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
 
   vault   KnowledgeVault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   lesson  Lesson         @relation(fields: [lessonId], references: [id], onDelete: Restrict)
@@ -503,12 +508,18 @@ model MissionContext {
   id        String   @id @default(uuid()) @db.Uuid
   missionId String   @db.Uuid
   version   Int
+  revision  Int      @default(1)
   summary   String
   isCurrent Boolean  @default(false)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
+  // `version` identifies the immutable context sequence. `revision` is the
+  // optimistic-concurrency token for curation before a new sequence is published.
   // The one-current-context rule is enforced transactionally when publishing a
   // context version; a portable Prisma partial-unique constraint is unavailable.
+  // The capsule junction is the explicit, ranked selection used for inheritance;
+  // it avoids copying source artifacts into context while preserving provenance.
   mission   Mission                 @relation(fields: [missionId], references: [id], onDelete: Cascade)
   capsules  MissionContextCapsule[]
   snapshots MissionSnapshot[]
@@ -544,7 +555,10 @@ model MissionSnapshot {
   generatedAt      DateTime?      @db.Timestamptz(3)
   publishedAt      DateTime?      @db.Timestamptz(3)
   createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
 
+  // A snapshot is a published capsule selection, not copied artifact content.
+  // Source capsules remain the authority for replay and historical provenance.
   mission        Mission                  @relation(fields: [missionId], references: [id], onDelete: Cascade)
   missionContext MissionContext           @relation(fields: [missionContextId], references: [id], onDelete: Restrict)
   capsules       MissionSnapshotCapsule[]
@@ -553,8 +567,9 @@ model MissionSnapshot {
   @@index([missionId, status, createdAt])
 }
 
-// A capsule intentionally uses a typed polymorphic reference: it is infrastructure
-// metadata for one immutable business artifact, not a competing aggregate.
+// A capsule intentionally uses a typed polymorphic reference because the Memory
+// Engine indexes several immutable artifact types. It is retrieval metadata, not a
+// competing aggregate: source artifacts retain business meaning and lifecycle.
 model MemoryCapsule {
   id                   String            @id @default(uuid()) @db.Uuid
   missionId            String            @db.Uuid
