@@ -35,10 +35,10 @@ stateDiagram-v2
 ### Required lifecycle controls
 
 - Activation requires at least one approved objective, accountable authority, applicable governance policy, and a baseline snapshot.
-- Pause, handoff, and terminal transitions generate snapshots.
+- Pause, handoff, and terminal transitions generate snapshots from selected Memory Capsules.
 - A mission cannot complete while unresolved material hazards lack an owner or an explicitly authorized acceptance decision.
 - Objective revisions and consequential decisions while active are captured before their effects are treated as current context.
-- Terminal transitions nominate candidate lessons, but promotion remains a separate review process.
+- Terminal transitions nominate Lesson Candidates, but Validation and admission to the Knowledge Vault remain separate processes.
 
 ## Agent lifecycle
 
@@ -70,10 +70,10 @@ stateDiagram-v2
 
 ## Handoff protocol
 
-1. Curate current mission context and identify unresolved questions, hazards, decisions, and next actions.
-2. Generate and validate a snapshot with a completeness assessment.
+1. Curate current Mission Context from eligible Memory Capsules and identify unresolved questions, hazards, decisions, and next actions.
+2. Generate and validate a snapshot from those capsules with a completeness assessment.
 3. Release or suspend the outgoing agent only after its obligations are recorded.
-4. Assign the incoming agent with role-specific authority and a classification-filtered snapshot.
+4. Assign the incoming agent with role-specific authority and a classification-filtered snapshot and Mission Context.
 5. Require acknowledgement; if the snapshot is stale or incomplete, refresh context before activation.
 6. Record the new agent's first assessment as attributable reasoning rather than overwriting inherited knowledge.
 
@@ -85,10 +85,10 @@ flowchart LR
   Debate --> Resolution[Resolution or documented dissent]
   Resolution --> Decision[Authorized decision, if needed]
   Resolution --> Candidate[Lesson candidate]
-  Candidate --> Review{Evidence and applicability reviewed?}
-  Review -->|approved| Institutional[Institutional lesson]
-  Review -->|not yet| Local[Mission-local lesson or deferred]
-  Institutional --> Future[Curated into future mission contexts]
+  Candidate --> Validation{Validation: evidence and applicability reviewed?}
+  Validation -->|approved| Vault[Knowledge Vault: Operational Knowledge]
+  Validation -->|not yet| Local[Mission-local lesson or deferred]
+  Vault --> Future[Curated into future Mission Context]
 ```
 
-This separation ensures that a debate can improve future work even where no immediate decision is made, while preventing a persuasive but weakly evidenced conclusion from becoming inherited institutional doctrine.
+This separation ensures that a debate can improve future work even where no immediate decision is made, while preventing a persuasive but weakly evidenced conclusion from becoming inherited Operational Knowledge. Memory Capsules preserve the chronological source history used by Mission Replay and by the validation process.

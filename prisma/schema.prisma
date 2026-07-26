@@ -1,0 +1,738 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
+
+enum MissionStatus {
+  DRAFT
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum AgentStatus {
+  REGISTERED
+  ELIGIBLE
+  ASSIGNED
+  ACTIVE
+  SUSPENDED
+  RELEASED
+  RETIRED
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  ACTIVE
+  SUSPENDED
+  RELEASED
+  REVOKED
+}
+
+enum AuthorityLevel {
+  OBSERVE
+  CONTRIBUTE
+  PROPOSE
+  DECIDE
+  ADMIN
+}
+
+enum Importance {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum Classification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  RESTRICTED
+}
+
+enum ObservationStatus {
+  CAPTURED
+  VALIDATED
+  SUPERSEDED
+  DISPUTED
+  WITHDRAWN
+}
+
+enum ReasoningStatus {
+  DRAFT
+  SUBMITTED
+  CHALLENGED
+  ACCEPTED
+  SUPERSEDED
+  REJECTED
+}
+
+enum DecisionStatus {
+  PROPOSED
+  UNDER_REVIEW
+  DECIDED
+  EXECUTED
+  REVISED
+  SUPERSEDED
+  REVOKED
+}
+
+enum DebateStatus {
+  CONVENED
+  ACTIVE
+  EVIDENCE_REVIEW
+  RESOLVED
+  DEFERRED
+  ABANDONED
+}
+
+enum DebatePositionStance {
+  SUPPORT
+  OPPOSE
+  CONDITIONAL
+  ALTERNATIVE
+}
+
+enum HazardStatus {
+  IDENTIFIED
+  ASSESSED
+  MITIGATED
+  ACCEPTED
+  TRANSFERRED
+  ESCALATED
+  REALIZED
+  CLOSED
+}
+
+enum ObjectiveStatus {
+  PROPOSED
+  APPROVED
+  ACTIVE
+  ACHIEVED
+  REVISED
+  DEPRIORITIZED
+  ABANDONED
+}
+
+enum LessonStatus {
+  CANDIDATE
+  VALIDATED
+  MISSION_LOCAL
+  ADMITTED
+  SUPERSEDED
+  RETIRED
+  REAFFIRMED
+  REJECTED
+}
+
+enum VaultStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum VaultEntryStatus {
+  ACTIVE
+  SUPERSEDED
+  RETIRED
+}
+
+enum SnapshotStatus {
+  REQUESTED
+  GENERATED
+  VALIDATED
+  PUBLISHED
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum CapsuleEntityType {
+  OBSERVATION
+  REASONING
+  DECISION
+  DEBATE
+  HAZARD
+  OBJECTIVE
+  LESSON
+  MISSION_SNAPSHOT
+}
+
+enum EvidenceStance {
+  SUPPORTS
+  CHALLENGES
+  CONTEXT
+}
+
+model Mission {
+  id              String        @id @default(uuid()) @db.Uuid
+  code            String        @unique
+  name            String
+  description     String
+  sponsorName     String
+  authorityPolicy String
+  status          MissionStatus @default(DRAFT)
+  version         Int           @default(1)
+  startedAt       DateTime?     @db.Timestamptz(3)
+  completedAt     DateTime?     @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  assignments  MissionAssignment[]
+  objectives   Objective[]
+  contexts     MissionContext[]
+  snapshots    MissionSnapshot[]
+  observations Observation[]
+  reasoning    Reasoning[]
+  decisions    Decision[]
+  debates      Debate[]
+  hazards      Hazard[]
+  lessons      Lesson[]
+  capsules     MemoryCapsule[]
+
+  @@index([status, updatedAt])
+}
+
+model Agent {
+  id           String      @id @default(uuid()) @db.Uuid
+  handle       String      @unique
+  displayName  String
+  description  String?
+  status       AgentStatus @default(REGISTERED)
+  capabilities Json
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+
+  assignments           MissionAssignment[]
+  observations          Observation[]         @relation("ObservationAuthor")
+  reasoning             Reasoning[]           @relation("ReasoningAuthor")
+  proposedDecisions     Decision[]            @relation("DecisionProposer")
+  decidedDecisions      Decision[]            @relation("DecisionAuthority")
+  debatePositions       DebatePosition[]
+  ownedHazards          Hazard[]              @relation("HazardOwner")
+  authoredLessons       Lesson[]              @relation("LessonAuthor")
+  stewardedVaultEntries KnowledgeVaultEntry[] @relation("VaultEntrySteward")
+  capsules              MemoryCapsule[]       @relation("CapsuleAuthor")
+
+  @@index([status])
+}
+
+model MissionAssignment {
+  id                    String           @id @default(uuid()) @db.Uuid
+  missionId             String           @db.Uuid
+  agentId               String           @db.Uuid
+  role                  String
+  authority             AuthorityLevel   @default(CONTRIBUTE)
+  status                AssignmentStatus @default(ASSIGNED)
+  assignedAt            DateTime         @default(now()) @db.Timestamptz(3)
+  activatedAt           DateTime?        @db.Timestamptz(3)
+  releasedAt            DateTime?        @db.Timestamptz(3)
+  expiresAt             DateTime?        @db.Timestamptz(3)
+  handoffAcknowledgedAt DateTime?        @db.Timestamptz(3)
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime         @updatedAt @db.Timestamptz(3)
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  agent   Agent   @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@unique([missionId, agentId, role, assignedAt])
+  @@index([missionId, status])
+  @@index([agentId, missionId, status])
+}
+
+model Objective {
+  id                String          @id @default(uuid()) @db.Uuid
+  missionId         String          @db.Uuid
+  parentObjectiveId String?         @db.Uuid
+  title             String
+  description       String
+  successCriteria   String
+  priority          Importance      @default(NORMAL)
+  status            ObjectiveStatus @default(PROPOSED)
+  constraints       Json?
+  progressSummary   String?
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
+
+  mission   Mission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  parent    Objective?          @relation("ObjectiveHierarchy", fields: [parentObjectiveId], references: [id], onDelete: Restrict)
+  children  Objective[]         @relation("ObjectiveHierarchy")
+  hazards   HazardObjective[]
+  decisions DecisionObjective[]
+
+  @@index([missionId, status, priority])
+  @@index([parentObjectiveId])
+}
+
+model Observation {
+  id               String            @id @default(uuid()) @db.Uuid
+  missionId        String            @db.Uuid
+  authorAgentId    String            @db.Uuid
+  supersedesId     String?           @db.Uuid
+  statement        String
+  scope            String
+  sourceName       String
+  provenanceUri    String?
+  isDirectEvidence Boolean           @default(false)
+  status           ObservationStatus @default(CAPTURED)
+  importance       Importance        @default(NORMAL)
+  confidence       Float
+  classification   Classification    @default(INTERNAL)
+  capturedAt       DateTime          @db.Timestamptz(3)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+
+  mission        Mission                @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  author         Agent                  @relation("ObservationAuthor", fields: [authorAgentId], references: [id], onDelete: Restrict)
+  supersedes     Observation?           @relation("ObservationSupersession", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy   Observation[]          @relation("ObservationSupersession")
+  reasoningLinks ReasoningObservation[]
+  decisionLinks  DecisionObservation[]
+  debateLinks    DebateObservation[]
+  lessonLinks    LessonObservation[]
+
+  @@index([missionId, capturedAt])
+  @@index([missionId, importance, status])
+  @@index([supersedesId])
+}
+
+model Reasoning {
+  id            String          @id @default(uuid()) @db.Uuid
+  missionId     String          @db.Uuid
+  authorAgentId String          @db.Uuid
+  supersedesId  String?         @db.Uuid
+  claim         String
+  conclusion    String
+  assumptions   String
+  alternatives  String?
+  uncertainty   String?
+  status        ReasoningStatus @default(DRAFT)
+  importance    Importance      @default(NORMAL)
+  confidence    Float
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+
+  mission      Mission                @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  author       Agent                  @relation("ReasoningAuthor", fields: [authorAgentId], references: [id], onDelete: Restrict)
+  supersedes   Reasoning?             @relation("ReasoningSupersession", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy Reasoning[]            @relation("ReasoningSupersession")
+  observations ReasoningObservation[]
+  decisions    DecisionReasoning[]
+  debateLinks  DebateReasoning[]
+  lessonLinks  LessonReasoning[]
+
+  @@index([missionId, createdAt])
+  @@index([missionId, status, importance])
+  @@index([supersedesId])
+}
+
+model Decision {
+  id                 String         @id @default(uuid()) @db.Uuid
+  missionId          String         @db.Uuid
+  proposedByAgentId  String         @db.Uuid
+  decidedByAgentId   String?        @db.Uuid
+  supersedesId       String?        @db.Uuid
+  title              String
+  chosenOption       String
+  rationale          String
+  effectiveScope     String
+  reviewTrigger      String?
+  reversalConditions String?
+  status             DecisionStatus @default(PROPOSED)
+  importance         Importance     @default(HIGH)
+  proposedAt         DateTime       @default(now()) @db.Timestamptz(3)
+  decidedAt          DateTime?      @db.Timestamptz(3)
+  executedAt         DateTime?      @db.Timestamptz(3)
+
+  mission      Mission               @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  proposedBy   Agent                 @relation("DecisionProposer", fields: [proposedByAgentId], references: [id], onDelete: Restrict)
+  decidedBy    Agent?                @relation("DecisionAuthority", fields: [decidedByAgentId], references: [id], onDelete: Restrict)
+  supersedes   Decision?             @relation("DecisionSupersession", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy Decision[]            @relation("DecisionSupersession")
+  reasoning    DecisionReasoning[]
+  observations DecisionObservation[]
+  hazards      DecisionHazard[]
+  objectives   DecisionObjective[]
+  lessons      LessonDecision[]
+
+  @@index([missionId, status, importance])
+  @@index([missionId, decidedAt])
+  @@index([supersedesId])
+}
+
+model Debate {
+  id                  String       @id @default(uuid()) @db.Uuid
+  missionId           String       @db.Uuid
+  reopenedFromId      String?      @db.Uuid
+  question            String
+  admissibilityRules  String?
+  resolutionSummary   String?
+  resolutionAuthority String?
+  status              DebateStatus @default(CONVENED)
+  importance          Importance   @default(HIGH)
+  convenedAt          DateTime     @default(now()) @db.Timestamptz(3)
+  resolvedAt          DateTime?    @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(3)
+
+  mission      Mission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  reopenedFrom Debate?             @relation("DebateReopening", fields: [reopenedFromId], references: [id], onDelete: Restrict)
+  reopenedBy   Debate[]            @relation("DebateReopening")
+  positions    DebatePosition[]
+  observations DebateObservation[]
+  reasoning    DebateReasoning[]
+  lessons      LessonDebate[]
+
+  @@index([missionId, status, convenedAt])
+  @@index([reopenedFromId])
+}
+
+model DebatePosition {
+  id        String               @id @default(uuid()) @db.Uuid
+  debateId  String               @db.Uuid
+  agentId   String               @db.Uuid
+  stance    DebatePositionStance
+  argument  String
+  isDissent Boolean              @default(false)
+  createdAt DateTime             @default(now()) @db.Timestamptz(3)
+
+  debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@index([debateId, createdAt])
+}
+
+model Hazard {
+  id             String         @id @default(uuid()) @db.Uuid
+  missionId      String         @db.Uuid
+  ownerAgentId   String?        @db.Uuid
+  title          String
+  description    String
+  impact         String
+  likelihood     Float?
+  indicators     String?
+  mitigationPlan String?
+  escalationPath String?
+  reviewCadence  String?
+  status         HazardStatus   @default(IDENTIFIED)
+  importance     Importance     @default(HIGH)
+  classification Classification @default(INTERNAL)
+  identifiedAt   DateTime       @default(now()) @db.Timestamptz(3)
+  nextReviewAt   DateTime?      @db.Timestamptz(3)
+  closedAt       DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+
+  mission    Mission           @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  // A hazard survives removal of its optional current owner so it can be reassigned.
+  owner      Agent?            @relation("HazardOwner", fields: [ownerAgentId], references: [id], onDelete: SetNull)
+  objectives HazardObjective[]
+  decisions  DecisionHazard[]
+  lessons    LessonHazard[]
+
+  @@index([missionId, status, importance])
+  @@index([ownerAgentId, status])
+  @@index([missionId, nextReviewAt])
+}
+
+model Lesson {
+  id            String       @id @default(uuid()) @db.Uuid
+  missionId     String       @db.Uuid
+  authorAgentId String       @db.Uuid
+  supersedesId  String?      @db.Uuid
+  title         String
+  statement     String
+  applicability String
+  limitations   String?
+  status        LessonStatus @default(CANDIDATE)
+  importance    Importance   @default(NORMAL)
+  confidence    Float
+  validatedAt   DateTime?    @db.Timestamptz(3)
+  reviewAt      DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+
+  mission      Mission               @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  author       Agent                 @relation("LessonAuthor", fields: [authorAgentId], references: [id], onDelete: Restrict)
+  supersedes   Lesson?               @relation("LessonSupersession", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy Lesson[]              @relation("LessonSupersession")
+  observations LessonObservation[]
+  reasoning    LessonReasoning[]
+  decisions    LessonDecision[]
+  debates      LessonDebate[]
+  hazards      LessonHazard[]
+  vaultEntries KnowledgeVaultEntry[]
+
+  @@index([missionId, status, importance])
+  @@index([supersedesId])
+  @@index([missionId, createdAt])
+}
+
+model KnowledgeVault {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String      @unique
+  description String
+  status      VaultStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
+
+  entries KnowledgeVaultEntry[]
+}
+
+model KnowledgeVaultEntry {
+  id             String           @id @default(uuid()) @db.Uuid
+  vaultId        String           @db.Uuid
+  lessonId       String           @db.Uuid
+  stewardAgentId String           @db.Uuid
+  status         VaultEntryStatus @default(ACTIVE)
+  admittedAt     DateTime         @default(now()) @db.Timestamptz(3)
+  reviewAt       DateTime?        @db.Timestamptz(3)
+
+  vault   KnowledgeVault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  lesson  Lesson         @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  steward Agent          @relation("VaultEntrySteward", fields: [stewardAgentId], references: [id], onDelete: Restrict)
+
+  @@unique([vaultId, lessonId])
+  @@index([vaultId, status, reviewAt])
+}
+
+model MissionContext {
+  id        String   @id @default(uuid()) @db.Uuid
+  missionId String   @db.Uuid
+  version   Int
+  summary   String
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  // The one-current-context rule is enforced transactionally when publishing a
+  // context version; a portable Prisma partial-unique constraint is unavailable.
+  mission   Mission                 @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  capsules  MissionContextCapsule[]
+  snapshots MissionSnapshot[]
+
+  @@unique([missionId, version])
+  @@index([missionId, isCurrent])
+}
+
+model MissionContextCapsule {
+  missionContextId String   @db.Uuid
+  capsuleId        String   @db.Uuid
+  relevanceRank    Int      @default(0)
+  inclusionReason  String?
+  addedAt          DateTime @default(now()) @db.Timestamptz(3)
+
+  missionContext MissionContext @relation(fields: [missionContextId], references: [id], onDelete: Cascade)
+  capsule        MemoryCapsule  @relation(fields: [capsuleId], references: [id], onDelete: Restrict)
+
+  @@id([missionContextId, capsuleId])
+  @@index([capsuleId])
+}
+
+model MissionSnapshot {
+  id               String         @id @default(uuid()) @db.Uuid
+  missionId        String         @db.Uuid
+  missionContextId String         @db.Uuid
+  version          Int
+  trigger          String
+  summary          String
+  unresolvedItems  String?
+  completenessNote String?
+  status           SnapshotStatus @default(REQUESTED)
+  generatedAt      DateTime?      @db.Timestamptz(3)
+  publishedAt      DateTime?      @db.Timestamptz(3)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+
+  mission        Mission                  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  missionContext MissionContext           @relation(fields: [missionContextId], references: [id], onDelete: Restrict)
+  capsules       MissionSnapshotCapsule[]
+
+  @@unique([missionId, version])
+  @@index([missionId, status, createdAt])
+}
+
+// A capsule intentionally uses a typed polymorphic reference: it is infrastructure
+// metadata for one immutable business artifact, not a competing aggregate.
+model MemoryCapsule {
+  id                   String            @id @default(uuid()) @db.Uuid
+  missionId            String            @db.Uuid
+  referencedEntityType CapsuleEntityType
+  referencedEntityId   String            @db.Uuid
+  authorAgentId        String            @db.Uuid
+  occurredAt           DateTime          @db.Timestamptz(3)
+  importance           Importance        @default(NORMAL)
+  // Normalized confidence (0..1) is validated in the domain layer before write.
+  confidence           Float
+  embeddingReference   String?
+  createdAt            DateTime          @default(now()) @db.Timestamptz(3)
+
+  mission   Mission                  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  author    Agent                    @relation("CapsuleAuthor", fields: [authorAgentId], references: [id], onDelete: Restrict)
+  contexts  MissionContextCapsule[]
+  snapshots MissionSnapshotCapsule[]
+
+  @@unique([missionId, referencedEntityType, referencedEntityId])
+  @@index([missionId, occurredAt])
+  @@index([missionId, importance, occurredAt])
+  @@index([referencedEntityType, referencedEntityId])
+}
+
+model MissionSnapshotCapsule {
+  missionSnapshotId String   @db.Uuid
+  capsuleId         String   @db.Uuid
+  inclusionOrder    Int
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  missionSnapshot MissionSnapshot @relation(fields: [missionSnapshotId], references: [id], onDelete: Cascade)
+  capsule         MemoryCapsule   @relation(fields: [capsuleId], references: [id], onDelete: Restrict)
+
+  @@id([missionSnapshotId, capsuleId])
+  @@unique([missionSnapshotId, inclusionOrder])
+  @@index([capsuleId])
+}
+
+model ReasoningObservation {
+  reasoningId   String         @db.Uuid
+  observationId String         @db.Uuid
+  stance        EvidenceStance @default(SUPPORTS)
+
+  reasoning   Reasoning   @relation(fields: [reasoningId], references: [id], onDelete: Cascade)
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@id([reasoningId, observationId])
+  @@index([observationId])
+}
+
+model DecisionReasoning {
+  decisionId  String @db.Uuid
+  reasoningId String @db.Uuid
+
+  decision  Decision  @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  reasoning Reasoning @relation(fields: [reasoningId], references: [id], onDelete: Restrict)
+
+  @@id([decisionId, reasoningId])
+  @@index([reasoningId])
+}
+
+model DecisionObservation {
+  decisionId    String @db.Uuid
+  observationId String @db.Uuid
+
+  decision    Decision    @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@id([decisionId, observationId])
+  @@index([observationId])
+}
+
+model DecisionHazard {
+  decisionId String @db.Uuid
+  hazardId   String @db.Uuid
+
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  hazard   Hazard   @relation(fields: [hazardId], references: [id], onDelete: Restrict)
+
+  @@id([decisionId, hazardId])
+  @@index([hazardId])
+}
+
+model DecisionObjective {
+  decisionId  String @db.Uuid
+  objectiveId String @db.Uuid
+
+  decision  Decision  @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  objective Objective @relation(fields: [objectiveId], references: [id], onDelete: Restrict)
+
+  @@id([decisionId, objectiveId])
+  @@index([objectiveId])
+}
+
+model HazardObjective {
+  hazardId    String @db.Uuid
+  objectiveId String @db.Uuid
+
+  hazard    Hazard    @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+  objective Objective @relation(fields: [objectiveId], references: [id], onDelete: Restrict)
+
+  @@id([hazardId, objectiveId])
+  @@index([objectiveId])
+}
+
+model DebateObservation {
+  debateId      String @db.Uuid
+  observationId String @db.Uuid
+
+  debate      Debate      @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@id([debateId, observationId])
+  @@index([observationId])
+}
+
+model DebateReasoning {
+  debateId    String @db.Uuid
+  reasoningId String @db.Uuid
+
+  debate    Debate    @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  reasoning Reasoning @relation(fields: [reasoningId], references: [id], onDelete: Restrict)
+
+  @@id([debateId, reasoningId])
+  @@index([reasoningId])
+}
+
+model LessonObservation {
+  lessonId      String @db.Uuid
+  observationId String @db.Uuid
+
+  lesson      Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@id([lessonId, observationId])
+  @@index([observationId])
+}
+
+model LessonReasoning {
+  lessonId    String @db.Uuid
+  reasoningId String @db.Uuid
+
+  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  reasoning Reasoning @relation(fields: [reasoningId], references: [id], onDelete: Restrict)
+
+  @@id([lessonId, reasoningId])
+  @@index([reasoningId])
+}
+
+model LessonDecision {
+  lessonId   String @db.Uuid
+  decisionId String @db.Uuid
+
+  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+
+  @@id([lessonId, decisionId])
+  @@index([decisionId])
+}
+
+model LessonDebate {
+  lessonId String @db.Uuid
+  debateId String @db.Uuid
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  debate Debate @relation(fields: [debateId], references: [id], onDelete: Restrict)
+
+  @@id([lessonId, debateId])
+  @@index([debateId])
+}
+
+model LessonHazard {
+  lessonId String @db.Uuid
+  hazardId String @db.Uuid
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  hazard Hazard @relation(fields: [hazardId], references: [id], onDelete: Restrict)
+
+  @@id([lessonId, hazardId])
+  @@index([hazardId])
+}

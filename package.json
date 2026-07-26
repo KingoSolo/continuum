@@ -13,18 +13,25 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
   },
   "devDependencies": {
     "@continuum/config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "@prisma/client": "^6.14.0",
     "@eslint/js": "^9.31.0",
     "eslint": "^9.31.0",
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",
+    "prisma": "^6.14.0",
+    "tsx": "^4.19.4",
     "turbo": "^2.5.5",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.37.0"
@@ -35,5 +42,8 @@
       "prettier --write"
     ],
     "*.{json,md,yml,yaml,css}": "prettier --write"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

@@ -11,30 +11,31 @@ The model distinguishes **facts and evidence** from **interpretations**, **commi
 1. A mission is the primary unit of accountable work.
 2. Observations are attributable evidence; reasoning is an interpretation of evidence.
 3. Decisions are explicit commitments with accountable authority and rationale.
-4. Agents are mission participants, not owners of institutional memory.
-5. Mission context is a curated working set; snapshots are immutable continuity handoffs.
+4. Agents are mission participants, not owners of operational knowledge.
+5. Mission Context is a curated, capsule-derived set; snapshots are immutable continuity handoffs.
 6. Lessons learned are validated, reusable knowledge—not merely past output.
 7. Hazards are managed explicitly, including uncertainty and information hazards.
 
 ## Ubiquitous language
 
-| Term                    | Meaning                                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------------- |
-| Mission                 | A bounded, accountable effort to advance one or more objectives under defined constraints.      |
-| Evidence                | Source material represented as an observation, with provenance and confidence.                  |
-| Working context         | The current, bounded body of information made available to mission participants.                |
-| Snapshot                | An immutable point-in-time continuity artifact describing a mission's state and usable context. |
-| Institutional knowledge | Lessons and resolved debate outcomes approved for reuse beyond their originating mission.       |
+| Term                  | Meaning                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| Mission               | A bounded, accountable effort to advance one or more objectives under defined constraints.            |
+| Evidence              | Source material represented as an observation, with provenance and confidence.                        |
+| Mission Context       | The current, bounded body of capsule-derived information made available to mission participants.      |
+| Snapshot              | An immutable point-in-time continuity artifact describing a mission's state and usable context.       |
+| Operational Knowledge | Validated reusable knowledge held in the Knowledge Vault, with applicability and review controls.     |
+| Memory Capsule        | An immutable Memory Engine record of one domain artifact, used for retrieval, continuity, and replay. |
 
 ## Entity model
 
 ### Mission
 
 - **Purpose:** The accountable container for a piece of autonomous work.
-- **Responsibilities:** Defines intent, scope, authority, participants, constraints, lifecycle state, and the current mission context. It accepts objectives, coordinates work, and records terminal outcomes.
+- **Responsibilities:** Defines intent, scope, authority, participants, constraints, lifecycle state, and the current Mission Context. It accepts objectives, coordinates work, and records terminal outcomes.
 - **Lifecycle:** Draft → planned → active → paused or completing → completed, cancelled, or failed. A completed mission remains readable and may contribute lessons, but cannot accept new operational decisions.
-- **Relationships:** Owns objectives, mission context, snapshots, observations, reasoning, decisions, debates, and hazards. Has many participating agents and may reference reusable lessons.
-- **Invariants:** A mission has a single accountable sponsor or owner; it has at least one objective before activation; only one current mission context exists; terminal missions are immutable except for post-mission review metadata; every consequential decision belongs to exactly one mission.
+- **Relationships:** Owns objectives, Mission Context, snapshots, observations, reasoning, decisions, debates, and hazards. Has many participating agents and may reference reusable lessons.
+- **Invariants:** A mission has a single accountable sponsor or owner; it has at least one objective before activation; only one current Mission Context exists; terminal missions are immutable except for post-mission review metadata; every consequential decision belongs to exactly one mission.
 
 ### Agent
 
@@ -49,7 +50,7 @@ The model distinguishes **facts and evidence** from **interpretations**, **commi
 - **Purpose:** An atomic, attributable statement about the world, a source, or mission execution.
 - **Responsibilities:** Preserves provenance, capture time, scope, confidence, classification, and whether it is direct evidence or an agent report. It does not silently assert a conclusion.
 - **Lifecycle:** Captured → validated, superseded, disputed, or withdrawn. Withdrawal preserves the artifact and explains why it is no longer reliable.
-- **Relationships:** Belongs to a mission; may support or challenge reasoning, decisions, hazards, objectives, and lessons; can be introduced in a debate; is included or omitted by a mission context through curation.
+- **Relationships:** Belongs to a mission; may support or challenge reasoning, decisions, hazards, objectives, and lessons; can be introduced in a debate; is included or omitted by Mission Context through curation.
 - **Invariants:** Provenance and capture time are immutable; confidence is explicit rather than implied; an observation cannot be edited into a different claim; supersession and dispute links preserve the original; sensitive observations carry handling constraints.
 
 ### Reasoning
@@ -71,7 +72,7 @@ The model distinguishes **facts and evidence** from **interpretations**, **commi
 ### Debate
 
 - **Purpose:** A structured process for resolving material disagreement, uncertainty, or competing approaches.
-- **Responsibilities:** Defines the question, participants, admissible evidence, positions, challenge process, resolution authority, and whether the outcome should become institutional knowledge.
+- **Responsibilities:** Defines the question, participants, admissible evidence, positions, challenge process, resolution authority, and whether the outcome should nominate a lesson candidate for the Knowledge Vault.
 - **Lifecycle:** Convened → active → evidence review → resolved, deferred, or abandoned. A resolved debate may be reopened only as a new debate linked to the prior result.
 - **Relationships:** Belongs to a mission; contains agent positions and references observations and reasoning; may lead to decisions, hazards, and lessons learned; is summarized in snapshots.
 - **Invariants:** The question is explicit; contributions are attributable; dissent is retained in the record; resolution has an identified authority or documented lack of resolution; a debate does not itself enact a decision.
@@ -96,25 +97,58 @@ The model distinguishes **facts and evidence** from **interpretations**, **commi
 
 - **Purpose:** A validated, reusable statement of knowledge derived from mission experience.
 - **Responsibilities:** Captures the lesson, applicability conditions, supporting evidence, confidence, limitations, review date, and adoption status. It prevents local experience from being lost after a mission closes.
-- **Lifecycle:** Candidate → reviewed → approved for mission use or institutional use → superseded, retired, or reaffirmed. Candidates are not inherited by default outside their origin mission.
-- **Relationships:** Is derived from one or more decisions, debates, observations, hazards, or outcomes; may be referenced by future reasoning and mission contexts; is promoted into institutional knowledge after approval.
-- **Invariants:** A lesson identifies its supporting source artifacts and applicability boundary; institutional lessons have an accountable steward and review cycle; lessons retain counterexamples and limitations where known; supersession preserves the prior lesson.
+- **Lifecycle:** Candidate → validated → admitted to the Knowledge Vault, retained as mission-local, superseded, retired, or reaffirmed. Candidates are not inherited by default outside their origin mission.
+- **Relationships:** Is derived from one or more decisions, debates, observations, hazards, or outcomes; may be referenced by future reasoning and Mission Context; validated reusable lessons are admitted to the Knowledge Vault as Operational Knowledge.
+- **Invariants:** A lesson identifies its supporting source artifacts and applicability boundary; Operational Knowledge has an accountable steward and review cycle; lessons retain counterexamples and limitations where known; supersession preserves the prior lesson.
 
 ### Mission Context
 
 - **Purpose:** The curated, current working knowledge available to agents for a mission.
-- **Responsibilities:** Selects and prioritizes objectives, active decisions, evidence, assumptions, open debates, hazards, relevant lessons, operational constraints, and references to detailed artifacts. It controls information relevance and access.
+- **Responsibilities:** Selects and prioritizes Memory Capsules representing objectives, active decisions, evidence, assumptions, open debates, hazards, relevant lessons, operational constraints, and references to detailed artifacts. It controls information relevance and access.
 - **Lifecycle:** Initialized during planning → continuously curated while active → frozen as part of a terminal snapshot. Context is versioned whenever its semantic content changes materially.
-- **Relationships:** Belongs to one mission; references all other domain entities without owning their histories; is the primary source from which agents inherit mission knowledge; produces snapshots.
-- **Invariants:** Exactly one current context version is designated per active mission; context references preserve access classification; curation never changes the source artifact; included summaries link to source artifacts; context size is bounded by relevance policy rather than unrestricted accumulation.
+- **Relationships:** Belongs to one mission; is built from Memory Capsules that reference other domain entities without owning their histories; is the primary source from which agents inherit mission knowledge; produces snapshots.
+- **Invariants:** Exactly one current context version is designated per active mission; context references preserve access classification; curation never changes a capsule or its source artifact; included summaries link to source artifacts; context size is bounded by relevance policy rather than unrestricted accumulation.
 
 ### Mission Snapshot
 
 - **Purpose:** An immutable continuity handoff that permits safe resumption, review, transfer, or audit.
-- **Responsibilities:** Captures mission state, objective progress, active decisions, open hazards, unresolved questions, relevant evidence and reasoning, debate status, next actions, and a digest of the mission context at a point in time.
+- **Responsibilities:** Captures mission state, objective progress, active decisions, open hazards, unresolved questions, relevant evidence and reasoning, debate status, next actions, and a digest generated from the selected Memory Capsules at a point in time.
 - **Lifecycle:** Requested → generated → validated → published → superseded or archived. Published snapshots are immutable and remain readable according to classification policy.
-- **Relationships:** Belongs to a mission; is generated from a version of mission context; is consumed by agents during assignment or resumption; references source artifacts and can seed a successor mission's context.
+- **Relationships:** Belongs to a mission; is generated from a version of Mission Context and its selected Memory Capsules; is consumed by agents during assignment or resumption; references source artifacts and can seed a successor mission's context.
 - **Invariants:** A snapshot identifies its source context version and generation reason; it does not duplicate authority by becoming a new decision; it contains a completeness assessment and unresolved items; an agent inherits only material permitted by its assignment and classification.
+
+### Memory Capsule
+
+Memory Capsule is an **infrastructure concept owned by the Memory Engine**, not a replacement for a business entity. It is the immutable unit of knowledge used to preserve and retrieve a single domain artifact. A capsule always references its source artifact; the artifact remains authoritative for its business meaning and lifecycle.
+
+- **Purpose:** Provide a durable, searchable, chronological representation of a mission artifact for continuity, semantic retrieval, and replay.
+- **Responsibilities:** Records a Capsule ID, Mission ID, referenced entity type, referenced entity ID, author agent, timestamp, importance, confidence, and embedding reference. It preserves a canonical reference and retrieval metadata without redefining the artifact.
+- **Lifecycle:** Created from an eligible artifact → indexed → available for context, snapshot, and replay projections → retained or access-restricted according to policy. A capsule is immutable; source correction or supersession produces a new linked capsule rather than editing the original.
+- **Relationships:** References exactly one artifact such as an Observation, Reasoning, Decision, Lesson Learned, Hazard, Debate, or other approved memory-producing artifact. Mission Context is built from capsules; Mission Snapshots are generated from selected capsules; Vector Search indexes capsules; Mission Replay reconstructs the mission timeline from capsules.
+- **Invariants:** One capsule references one source artifact version; reference identity, author, timestamp, and Mission ID are immutable; importance is one of `CRITICAL`, `HIGH`, `NORMAL`, or `LOW`; confidence is explicit; the embedding reference is retrievable metadata and never substitutes for source provenance; access restrictions on the source also apply to the capsule.
+
+### Knowledge Vault
+
+Knowledge Vault is the governed repository of validated Operational Knowledge reusable across missions. It is not a second source of truth for mission artifacts; it stores the approved, applicability-bounded outcome of lesson validation.
+
+- **Purpose:** Make proven operational learning discoverable for future missions without automatically treating every lesson as reusable doctrine.
+- **Responsibilities:** Admits validated lessons, preserves their evidence and applicability limits, assigns stewardship and review cycles, and makes approved knowledge available to Mission Context curation.
+- **Lifecycle:** Receives a validated Lesson Candidate → admitted as Operational Knowledge → reviewed, reaffirmed, superseded, or retired. Rejection leaves the lesson mission-local or deferred.
+- **Relationships:** Contains validated Lesson Learned records and their supporting Memory Capsules; supplies eligible Operational Knowledge to future Mission Context through policy-filtered retrieval.
+- **Invariants:** Only validated lessons enter the vault; each entry has a steward, applicability boundary, evidence links, and review state; admission never changes the originating lesson or debate record; revoked or superseded knowledge remains historically traceable but is not selected by default.
+
+## Importance classification
+
+Every memory-producing artifact—at minimum Observation, Reasoning, Decision, Debate, Hazard, Lesson Learned, and an approved extension—is assigned an Importance classification when it is created or validated. The corresponding Memory Capsule carries that classification.
+
+| Importance | Meaning                                                                      | Continuity effect                                                                                        |
+| ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `CRITICAL` | Safety-, authority-, or mission-survival-significant knowledge.              | Included in snapshots and inherited context unless access policy forbids it; highest retrieval priority. |
+| `HIGH`     | Materially affects objective achievement, risk, or a consequential decision. | Strongly preferred for snapshots and inheritance; prioritized in retrieval.                              |
+| `NORMAL`   | Useful mission knowledge with ordinary operational relevance.                | Selected by relevance and role during context construction.                                              |
+| `LOW`      | Ancillary detail retained for traceability or later investigation.           | Excluded from constrained handoffs unless specifically relevant; lower retrieval priority.               |
+
+Importance is not confidence: a low-confidence warning may be CRITICAL, and a highly confident routine observation may be LOW. Changes to importance are attributable, versioned source changes that produce a new Memory Capsule.
 
 ## High-level domain diagram
 
@@ -131,10 +165,13 @@ classDiagram
   class LessonLearned
   class MissionContext
   class MissionSnapshot
+  class MemoryCapsule
+  class KnowledgeVault
 
   Mission "1" *-- "1..*" Objective
   Mission "1" *-- "1" MissionContext
   Mission "1" *-- "0..*" MissionSnapshot
+  Mission "1" o-- "0..*" MemoryCapsule
   Mission "1" o-- "0..*" Observation
   Mission "1" o-- "0..*" Reasoning
   Mission "1" o-- "0..*" Decision
@@ -152,7 +189,13 @@ classDiagram
   MissionContext --> Objective : curates
   MissionContext --> Observation : curates
   MissionContext --> LessonLearned : curates
+  MissionContext --> MemoryCapsule : is built from
   MissionSnapshot --> MissionContext : freezes a version of
+  MissionSnapshot --> MemoryCapsule : generated from
+  MemoryCapsule --> Observation : references one artifact
+  MemoryCapsule --> Reasoning : references one artifact
+  MemoryCapsule --> Decision : references one artifact
+  KnowledgeVault --> LessonLearned : admits validated lessons
 ```
 
 ## Cognitive Continuity
@@ -161,7 +204,7 @@ Cognitive Continuity is Continuum's ability to preserve a mission's usable under
 
 ### Agent context inheritance
 
-When an agent is assigned or resumes work, it receives a role- and classification-filtered view of the latest validated mission snapshot plus the current mission context. The receiving agent must acknowledge the assignment, inspect open hazards and active decisions, and may request source artifacts before acting. Inheritance gives the agent knowledge to work from; it does not transfer decision authority or erase the agent's obligation to assess evidence.
+When an agent is assigned or resumes work, it receives a role- and classification-filtered view of the latest validated Mission Snapshot plus the current Mission Context, both constructed from eligible Memory Capsules. The receiving agent must acknowledge the assignment, inspect open hazards and active decisions, and may request source artifacts before acting. Inheritance gives the agent knowledge to work from; it does not transfer decision authority or erase the agent's obligation to assess evidence.
 
 ### Information transferred
 
@@ -174,12 +217,16 @@ When an agent is assigned or resumes work, it receives a role- and classificatio
 - Relevant approved lessons, including their applicability limits.
 - Explicit next actions, owners, dependencies, and snapshot completeness warnings.
 
-### Snapshot and memory policy
+### Snapshot, memory, and replay policy
 
-Snapshots are generated at mission activation, agent handoff, material decision, material hazard change, debate resolution, pause/resume, before terminal transition, and periodically for long-running missions. They may also be requested for audit or recovery. Generation is event-driven and can be supplemented by a time-based policy; it must never block urgent safety escalation.
+Snapshots are generated from Memory Capsules at mission activation, agent handoff, material decision, material hazard change, debate resolution, pause/resume, before terminal transition, and periodically for long-running missions. `CRITICAL` capsules are included unless policy prevents it; `HIGH` capsules are strongly preferred, while `NORMAL` and `LOW` capsules are selected by relevance. Snapshots may also be requested for audit or recovery. Generation is event-driven and can be supplemented by a time-based policy; it must never block urgent safety escalation.
 
-Mission context is updated when validated evidence arrives, a decision changes effective state, an objective changes, a hazard changes materially, a debate reaches a material stage, or a curator explicitly changes relevance. Updates are append-oriented and versioned so historical context remains reconstructible.
+Mission Context is updated when a new eligible Memory Capsule is created, a decision changes effective state, an objective changes, a hazard changes materially, a debate reaches a material stage, or a curator explicitly changes relevance. Updates are append-oriented and versioned so historical context remains reconstructible. Vector Search indexes Memory Capsules for semantic retrieval, applying classification, mission scope, and importance before relevance ranking.
 
-### From debate to institutional knowledge
+### Mission Replay
 
-A resolved debate does not automatically become institutional knowledge. Its resolution may nominate a lesson candidate. A review assesses evidence quality, repeatability, applicability, counterexamples, and stewardship. Once approved for institutional use, the lesson is indexed for future contexts, carries a review date, and retains both the debate summary and dissent. New evidence can supersede the lesson without altering its origin record.
+Mission Replay is a read model that reconstructs the chronological evolution of a mission from stored Memory Capsules. It presents attributable Observations, Reasoning, Decisions, Hazards, Lessons Learned, and Debates in time order, while retaining links to their authoritative source artifacts. Replay supports audit, incident review, learning, and recovery; it does not alter history, regenerate business artifacts, or confer new authority.
+
+### From debate to Operational Knowledge
+
+A resolved debate does not automatically become Operational Knowledge. Its resolution may nominate a Lesson Candidate. Validation assesses evidence quality, repeatability, applicability, counterexamples, and stewardship. Once admitted to the Knowledge Vault, the resulting Operational Knowledge is eligible for future Mission Context, carries a review date, and retains both the debate summary and dissent. New evidence can supersede the entry without altering its origin record.
