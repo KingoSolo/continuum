@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "analyzing-range-distribution": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-observability-and-diagnostics/analyzing-range-distribution/SKILL.md",
+      "computedHash": "33782b26bd6154cbade2e16abceaf6982ce1743ed48245f656cfbd75a8d3a88b"
+    },
+    "cockroachdb-sql": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-query-and-schema-design/cockroachdb-sql/SKILL.md",
+      "computedHash": "9b5a5d981d6a87240f1f3055075c71dacf274b29b8b9a039cd9dfb3dbcf308e1"
+    },
+    "designing-application-transactions": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-application-development/designing-application-transactions/SKILL.md",
+      "computedHash": "ec22ca0448e2b34578bf141f182b6150a3ad773fde39ab0ae797ed4958012b82"
+    }
+  }
+}

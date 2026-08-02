@@ -4,3 +4,5 @@ dist/
 .turbo/
 coverage/
 pnpm-lock.yaml
+# Vendored upstream skills — reformatting would break the content hashes in skills-lock.json
+.claude/skills/

@@ -17,6 +17,7 @@ When an autonomous agent fails or is replaced mid-mission, the context it was ho
 | **Interfaces**     | Next.js "Mission Control" UI and a headless, REST-only simulator                                            |
 | **Reference demo** | Deterministic 13-stage ARES-7 scenario, run end-to-end over the API                                         |
 | **Memory model**   | Immutable capsules for 6 recorded artifact types — observation, reasoning, decision, debate, hazard, lesson |
+| **Agent tooling**  | CockroachDB Managed MCP Server + 3 CockroachDB Agent Skills, executed read-only against the live cluster    |
 | **Tests**          | 4 suites — Memory Engine unit, two API integration suites, and the simulator scenario                       |
 | **Docs**           | 4 architecture documents in `docs/architecture`, with Mermaid diagrams                                      |
 | **Workspace**      | pnpm + Turborepo monorepo — 8 packages (3 apps, 5 libraries)                                                |
@@ -162,6 +163,27 @@ demo prompts are in [`docs/mcp-demo.md`](docs/mcp-demo.md).
 
 ---
 
+## CockroachDB Agent Skills
+
+On top of that connection, Continuum installs three
+[CockroachDB Agent Skills](https://github.com/cockroachlabs/cockroachdb-skills)
+— Cockroach Labs' machine-executable operational procedures — and **runs them
+against the live cluster**: `cockroachdb-sql` (schema and query audit),
+`analyzing-range-distribution` (range, replication, and hotspot analysis), and
+`designing-application-transactions` (transaction scope and retry review).
+
+The skills supply the procedure, the MCP server supplies the live connection.
+Executing them produced three engineering findings — a harmful index
+recommendation caught and rejected, range distribution verified rather than
+assumed, and one real weakness in the Memory Engine's retry backoff. Each is
+stated with the command and raw cluster output that produced it in
+**[docs/agent-skills.md → Engineering Findings](docs/agent-skills.md#engineering-findings)**.
+
+Installed with one command, pinned by [`skills-lock.json`](skills-lock.json),
+**no secrets**, and read-only throughout — no application code was changed.
+
+---
+
 ## Repository Structure
 
 Continuum is a pnpm + Turborepo monorepo. Everything the demo depends on is **implemented today** — the **NestJS API**, the **Memory Engine**, **Mission Control** (web), the **headless simulator**, the seed, and the **test suites**. Three workspace packages — `shared`, `agents`, and `prompts` — are **intentionally reserved roadmap placeholders**, labeled as such below; they are scaffolding for future work, not missing pieces of the current system.
@@ -234,12 +256,13 @@ Implemented today:
 
 ## Screenshots & Demo
 
-A walkthrough recording and screenshots accompany the Devpost submission. Because the demo is fully runnable (see [Quick Start](#quick-start)), each surface can also be reproduced locally in minutes:
+A walkthrough recording and screenshots accompany the Devpost submission. Nothing here is a stock integration screenshot: the CockroachDB tooling is **used**, not merely installed — the Managed MCP Server answers questions against live mission memory, and the Agent Skills were executed against the running cluster, producing the schema, range-distribution, and transaction findings recorded in [`docs/agent-skills.md`](docs/agent-skills.md). Because the demo is fully runnable (see [Quick Start](#quick-start)), each surface can also be reproduced locally in minutes:
 
 - **Mission Control** at the agent-failure → replacement handoff — open `http://localhost:3000` and press **Start Demo**.
 - **Swagger / OpenAPI** — `http://localhost:3001/docs`.
 - **CockroachDB rows** — watch the mission, agents, and Memory Capsules appear in the CockroachDB SQL console as the demo writes them.
 - **Headless simulator** — the narrated timeline printed by `pnpm --filter @continuum/simulator demo`.
+- **Agent Skills against the live cluster** — the `SHOW RANGES`, `SHOW ZONE CONFIGURATIONS`, and `EXPLAIN` output captured in [`docs/agent-skills.md`](docs/agent-skills.md), produced by running CockroachDB Agent Skills through the Managed MCP Server.
 
 <!-- Embed captures here before submission: docs/diagrams/screenshot-*.png -->
 
