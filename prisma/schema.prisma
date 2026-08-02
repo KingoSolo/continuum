@@ -153,6 +153,13 @@ enum SnapshotStatus {
   ARCHIVED
 }
 
+enum SnapshotArchiveStatus {
+  PENDING
+  UPLOADED
+  FAILED
+  SKIPPED
+}
+
 enum CapsuleEntityType {
   OBSERVATION
   REASONING
@@ -554,6 +561,12 @@ model MissionSnapshot {
   status           SnapshotStatus @default(REQUESTED)
   generatedAt      DateTime?      @db.Timestamptz(3)
   publishedAt      DateTime?      @db.Timestamptz(3)
+  // Optional Amazon S3 archive location (s3://bucket/key) for the serialized
+  // snapshot. Set only when S3 archival is configured; null otherwise.
+  archiveUri       String?
+  // Outcome of S3 archival for this snapshot. PENDING until archival runs; then
+  // SKIPPED (S3 not configured), UPLOADED (success), or FAILED (upload error).
+  archiveStatus    SnapshotArchiveStatus @default(PENDING)
   createdAt        DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
 

@@ -584,6 +584,11 @@ async function main() {
   });
 
   console.log(`Seeded ${mission.code}: ${mission.name}`);
+  console.log(`Mission ID: ${mission.id}`);
+  console.log('');
+  console.log('Set this in your environment to run the demo:');
+  console.log(`  apps/web/.env.local  ->  NEXT_PUBLIC_MISSION_ID=${mission.id}`);
+  console.log(`  simulator            ->  MISSION_ID=${mission.id}`);
 }
 
 main()

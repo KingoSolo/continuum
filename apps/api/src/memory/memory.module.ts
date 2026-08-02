@@ -5,6 +5,8 @@ import { PrismaClient } from '@prisma/client';
 
 import { MemoryApiService } from './memory-api.service.js';
 import { MemoryController } from './memory.controller.js';
+import { S3Service } from '../s3/s3.service.js';
+import { SnapshotArchiveService } from '../s3/snapshot-archive.service.js';
 
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
@@ -24,6 +26,8 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
     },
     { provide: 'MEMORY_ENGINE', useExisting: MemoryEngineService },
     MemoryApiService,
+    S3Service,
+    SnapshotArchiveService,
   ],
   exports: [
     PrismaService,

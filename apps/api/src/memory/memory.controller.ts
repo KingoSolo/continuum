@@ -7,6 +7,7 @@ import {
   RecordMemoryCapsuleValidationPipe,
 } from './dto/record-memory-capsule.dto.js';
 import { MemoryApiService } from './memory-api.service.js';
+import { SnapshotArchiveService } from '../s3/snapshot-archive.service.js';
 
 const missionParam = {
   name: 'missionId',
@@ -22,6 +23,8 @@ export class MemoryController {
     private readonly memoryEngine: MemoryEngineService,
     @Inject(MemoryApiService)
     private readonly memoryApi: MemoryApiService,
+    @Inject(SnapshotArchiveService)
+    private readonly snapshotArchive: SnapshotArchiveService,
   ) {}
 
   @Post('memory/capsules')
@@ -68,7 +71,8 @@ export class MemoryController {
   snapshot(@Param('missionId', new ParseUUIDPipe()) missionId: string) {
     return this.memoryEngine
       .generateMissionSnapshot(missionId)
-      .then((result) => this.memoryApi.unwrap(result));
+      .then((result) => this.memoryApi.unwrap(result))
+      .then((build) => this.snapshotArchive.archive(missionId, build));
   }
 
   @Get('timeline')
