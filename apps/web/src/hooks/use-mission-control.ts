@@ -48,6 +48,21 @@ const baseline: FleetAgent[] = [
 ];
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Production-safe run token: prefer crypto.randomUUID (secure contexts), fall
+// back to crypto.getRandomValues, then to a time+random mix. Always returns 8
+// hex characters so the existing run-id format is preserved.
+function runToken(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID().slice(0, 8);
+  if (c && typeof c.getRandomValues === 'function') {
+    const buffer = new Uint8Array(4);
+    c.getRandomValues(buffer);
+    return Array.from(buffer, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+  const value = ((Date.now() & 0xffff) * 0x10000 + Math.floor(Math.random() * 0x10000)) >>> 0;
+  return value.toString(16).padStart(8, '0');
+}
+
 export function useMissionControl() {
   const client = useQueryClient();
   const [agents, setAgents] = useState(baseline);
@@ -59,6 +74,7 @@ export function useMissionControl() {
   const knownCapsuleIds = useRef<string[]>([]);
   const [newCapsuleIds, setNewCapsuleIds] = useState<string[]>([]);
   const [complete, setComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const timelineQuery = useQuery({
     queryKey: ['timeline', missionId],
@@ -138,13 +154,14 @@ export function useMissionControl() {
     setComplete(false);
     setHandoffStage(null);
     setHighlightFailure(false);
+    setError(null);
     // Each Start Demo press begins a fresh, isolated mission run. The run id
     // namespaces every agent handle so repeated runs never collide on the
     // globally-unique Agent.handle. An explicit NEXT_PUBLIC_SIMULATOR_RUN_ID is
     // treated as a base label; a unique suffix is always appended so a fixed
     // env value can never reintroduce duplicate handles.
     const runBase = process.env.NEXT_PUBLIC_SIMULATOR_RUN_ID ?? 'mission-control-demo';
-    const run = `${runBase}-${crypto.randomUUID().slice(0, 8)}`;
+    const run = `${runBase}-${runToken()}`;
     try {
       const register = (name: string, role: string, authority: string, capabilities: string[]) =>
         api.post<{ agent: { id: string } }>('/agents', {
@@ -288,6 +305,15 @@ export function useMissionControl() {
       setPhase('Mission complete — Continuity validated');
       await client.invalidateQueries();
       setComplete(true);
+    } catch (cause) {
+      // Stop the demo cleanly on any failed API call: existing mission data is
+      // preserved (nothing is deleted), the error is not swallowed (logged for
+      // diagnostics), and a user-friendly message is surfaced for the operator.
+      console.error('Mission Control demo halted:', cause);
+      setHandoffStage(null);
+      setError(
+        'Mission Control demo interrupted by a connection issue. Press Start Demo to retry.',
+      );
     } finally {
       setRunning(false);
     }
@@ -309,6 +335,7 @@ export function useMissionControl() {
     snapshots: timeline.filter((item) => item.type === 'MISSION_SNAPSHOT').length,
     newCapsuleIds,
     complete,
+    error,
     apiConnected: contextQuery.isSuccess || timelineQuery.isSuccess,
     memoryConnected: contextQuery.isSuccess,
   };

@@ -72,6 +72,27 @@ export class MemoryEngineService {
     throw lastError;
   }
 
+  // Context/snapshot builds for a single mission all mutate the same rows (the
+  // mission's current MissionContext). Frontend polling + demo calls make these
+  // overlap, and SERIALIZABLE then aborts one with a 40001 conflict. Retrying
+  // only lowers the odds. Since the API runs as one process, we remove the
+  // overlap at its source by serialising these builds per mission id — the DB
+  // isolation guarantee is unchanged, it simply never has a conflict to abort.
+  private readonly missionBuildLocks = new Map<string, Promise<unknown>>();
+  private serializePerMission<T>(missionId: string, operation: () => Promise<T>): Promise<T> {
+    const previous = this.missionBuildLocks.get(missionId) ?? Promise.resolve();
+    const result = previous.then(operation, operation);
+    const tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.missionBuildLocks.set(missionId, tail);
+    void tail.then(() => {
+      if (this.missionBuildLocks.get(missionId) === tail) this.missionBuildLocks.delete(missionId);
+    });
+    return result;
+  }
+
   async recordMemoryCapsule(input: RecordMemoryCapsuleInput): Promise<Result<MemoryCapsule>> {
     if (input.confidence < 0 || input.confidence > 1) {
       return failure('PERSISTENCE_FAILURE', 'Capsule confidence must be between 0 and 1.');
@@ -130,40 +151,42 @@ export class MemoryEngineService {
     }
 
     try {
-      return await this.withSerializableRetry(() =>
-        this.prisma.$transaction(async (transaction) => {
-          const [current, capsules] = await Promise.all([
-            transaction.missionContext.findFirst({
+      return await this.serializePerMission(missionId, () =>
+        this.withSerializableRetry(() =>
+          this.prisma.$transaction(async (transaction) => {
+            const [current, capsules] = await Promise.all([
+              transaction.missionContext.findFirst({
+                where: { missionId, isCurrent: true },
+                orderBy: { version: 'desc' },
+              }),
+              this.selectContextCapsules(transaction, missionId, options),
+            ]);
+            const selectedCapsuleIds = capsules.map((capsule) => capsule.id);
+
+            await transaction.missionContext.updateMany({
               where: { missionId, isCurrent: true },
-              orderBy: { version: 'desc' },
-            }),
-            this.selectContextCapsules(transaction, missionId, options),
-          ]);
-          const selectedCapsuleIds = capsules.map((capsule) => capsule.id);
+              data: { isCurrent: false },
+            });
 
-          await transaction.missionContext.updateMany({
-            where: { missionId, isCurrent: true },
-            data: { isCurrent: false },
-          });
-
-          const context = await transaction.missionContext.create({
-            data: {
-              missionId,
-              version: (current?.version ?? 0) + 1,
-              summary: this.contextSummary(capsules.length),
-              isCurrent: true,
-              capsules: {
-                create: capsules.map((capsule, index) => ({
-                  capsuleId: capsule.id,
-                  relevanceRank: capsules.length - index,
-                  inclusionReason: 'Curated by Memory Engine relevance policy.',
-                })),
+            const context = await transaction.missionContext.create({
+              data: {
+                missionId,
+                version: (current?.version ?? 0) + 1,
+                summary: this.contextSummary(capsules.length),
+                isCurrent: true,
+                capsules: {
+                  create: capsules.map((capsule, index) => ({
+                    capsuleId: capsule.id,
+                    relevanceRank: capsules.length - index,
+                    inclusionReason: 'Curated by Memory Engine relevance policy.',
+                  })),
+                },
               },
-            },
-          });
+            });
 
-          return success({ context, selectedCapsuleIds });
-        }),
+            return success({ context, selectedCapsuleIds });
+          }),
+        ),
       );
     } catch {
       return failure('PERSISTENCE_FAILURE', 'Unable to build the Mission Context.', { missionId });
@@ -172,52 +195,54 @@ export class MemoryEngineService {
 
   async generateMissionSnapshot(missionId: string): Promise<Result<MissionSnapshotBuild>> {
     try {
-      return await this.withSerializableRetry(() =>
-        this.prisma.$transaction(async (transaction) => {
-          const context = await transaction.missionContext.findFirst({
-            where: { missionId, isCurrent: true },
-            orderBy: { version: 'desc' },
-            include: { capsules: { orderBy: { relevanceRank: 'desc' } } },
-          });
-          if (!context) {
-            return failure(
-              'CONTEXT_NOT_FOUND',
-              'A current Mission Context is required to create a snapshot.',
-              {
+      return await this.serializePerMission(missionId, () =>
+        this.withSerializableRetry(() =>
+          this.prisma.$transaction(async (transaction) => {
+            const context = await transaction.missionContext.findFirst({
+              where: { missionId, isCurrent: true },
+              orderBy: { version: 'desc' },
+              include: { capsules: { orderBy: { relevanceRank: 'desc' } } },
+            });
+            if (!context) {
+              return failure(
+                'CONTEXT_NOT_FOUND',
+                'A current Mission Context is required to create a snapshot.',
+                {
+                  missionId,
+                },
+              );
+            }
+
+            const latestSnapshot = await transaction.missionSnapshot.findFirst({
+              where: { missionId },
+              orderBy: { version: 'desc' },
+              select: { version: true },
+            });
+            const occurredAt = this.now();
+            const selectedCapsuleIds = context.capsules.map((entry) => entry.capsuleId);
+            const snapshot = await transaction.missionSnapshot.create({
+              data: {
                 missionId,
+                missionContextId: context.id,
+                version: (latestSnapshot?.version ?? 0) + 1,
+                trigger: 'Memory Engine curated continuity handoff',
+                summary: context.summary,
+                completenessNote: `Curated from ${selectedCapsuleIds.length} Memory Capsules.`,
+                status: SnapshotStatus.PUBLISHED,
+                generatedAt: occurredAt,
+                publishedAt: occurredAt,
+                capsules: {
+                  create: selectedCapsuleIds.map((capsuleId, inclusionOrder) => ({
+                    capsuleId,
+                    inclusionOrder,
+                  })),
+                },
               },
-            );
-          }
+            });
 
-          const latestSnapshot = await transaction.missionSnapshot.findFirst({
-            where: { missionId },
-            orderBy: { version: 'desc' },
-            select: { version: true },
-          });
-          const occurredAt = this.now();
-          const selectedCapsuleIds = context.capsules.map((entry) => entry.capsuleId);
-          const snapshot = await transaction.missionSnapshot.create({
-            data: {
-              missionId,
-              missionContextId: context.id,
-              version: (latestSnapshot?.version ?? 0) + 1,
-              trigger: 'Memory Engine curated continuity handoff',
-              summary: context.summary,
-              completenessNote: `Curated from ${selectedCapsuleIds.length} Memory Capsules.`,
-              status: SnapshotStatus.PUBLISHED,
-              generatedAt: occurredAt,
-              publishedAt: occurredAt,
-              capsules: {
-                create: selectedCapsuleIds.map((capsuleId, inclusionOrder) => ({
-                  capsuleId,
-                  inclusionOrder,
-                })),
-              },
-            },
-          });
-
-          return success({ snapshot, selectedCapsuleIds });
-        }),
+            return success({ snapshot, selectedCapsuleIds });
+          }),
+        ),
       );
     } catch {
       return failure('PERSISTENCE_FAILURE', 'Unable to generate the Mission Snapshot.', {

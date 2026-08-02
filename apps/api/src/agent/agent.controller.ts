@@ -3,6 +3,9 @@ import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs
 import { MemoryEngineService } from '@continuum/memory-engine';
 
 import { MemoryApiService } from '../memory/memory-api.service.js';
+// Both DTOs must be value imports: they are consumed at runtime by the
+// ValidationPipe. `import type` erases the class, leaving an empty whitelist so
+// forbidNonWhitelisted rejects every field (400 "property X should not exist").
 import type { ReplaceMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
 import { RegisterMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
 import { MissionDomainService } from '../mission/mission-domain.service.js';

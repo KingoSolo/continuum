@@ -36,6 +36,14 @@ export default function MissionControlPage() {
         simulatorRunning={control.isRunning}
       />
       <HandoffAlert stage={control.handoffStage} />
+      {control.error && (
+        <div
+          role="alert"
+          className="fixed left-1/2 top-24 z-30 w-[min(92vw,480px)] -translate-x-1/2 border border-alert/60 bg-slate-950/95 p-4 text-sm text-white shadow-[0_0_34px_rgba(255,157,59,.22)]"
+        >
+          {control.error}
+        </div>
+      )}
       <div className="mx-auto grid max-w-[1800px] gap-4 px-4 pb-28 pt-4 lg:grid-cols-[300px_minmax(0,1fr)_320px]">
         <aside className="order-2 space-y-4 lg:order-1">
           <Timeline
