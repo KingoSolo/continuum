@@ -154,6 +154,13 @@ enum SnapshotStatus {
   ARCHIVED
 }
 
+enum SnapshotArchiveStatus {
+  PENDING
+  UPLOADED
+  FAILED
+  SKIPPED
+}
+
 enum CapsuleEntityType {
   OBSERVATION
   REASONING
@@ -553,6 +560,8 @@ model MissionSnapshot {
   unresolvedItems  String?
   completenessNote String?
   status           SnapshotStatus @default(REQUESTED)
+  archiveStatus    SnapshotArchiveStatus @default(PENDING)
+  archiveUri       String?
   generatedAt      DateTime?      @db.Timestamptz(3)
   publishedAt      DateTime?      @db.Timestamptz(3)
   createdAt        DateTime       @default(now()) @db.Timestamptz(3)
