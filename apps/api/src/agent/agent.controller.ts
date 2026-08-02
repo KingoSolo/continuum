@@ -1,12 +1,10 @@
 import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { MemoryEngineService } from '@continuum/memory-engine';
 
 import { MemoryApiService } from '../memory/memory-api.service.js';
-import type {
-  RegisterMissionAgentDto,
-  ReplaceMissionAgentDto,
-} from '../mission/dto/mission-actions.dto.js';
+import type { ReplaceMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
+import { RegisterMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
 import { MissionDomainService } from '../mission/mission-domain.service.js';
 
 @ApiTags('Agent')
@@ -40,12 +38,15 @@ export class AgentController {
 
   @Post()
   @ApiOperation({ summary: 'Register a new agent and active mission assignment.' })
+  @ApiBody({
+    type: RegisterMissionAgentDto,
+  })
   @ApiParam({ name: 'missionId', format: 'uuid' })
   register(
     @Param('missionId', new ParseUUIDPipe()) missionId: string,
-    @Body() body: RegisterMissionAgentDto,
+    @Body() dto: RegisterMissionAgentDto,
   ) {
-    return this.domain.registerAgent(missionId, body);
+    return this.domain.registerAgent(missionId, dto);
   }
 
   @Post(':agentId/fail')

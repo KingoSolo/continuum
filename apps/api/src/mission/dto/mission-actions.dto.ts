@@ -12,6 +12,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -29,7 +30,7 @@ export class RecordObservationDto {
   @ApiProperty() @IsString() scope!: string;
   @ApiProperty() @IsString() sourceName!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() provenanceUri?: string;
-  @ApiProperty({ example: true }) isDirectEvidence!: boolean;
+  @ApiProperty({ example: true }) @IsBoolean() isDirectEvidence!: boolean;
   @ApiProperty({ enum: Importance }) @IsEnum(Importance) importance!: Importance;
   @ApiProperty({ minimum: 0, maximum: 1 }) @IsNumber() @Min(0) @Max(1) confidence!: number;
   @ApiPropertyOptional({ enum: Classification })

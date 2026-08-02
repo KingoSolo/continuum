@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+.panel {
+  @apply border border-cyan/15 bg-slate-950/65 shadow-[0_12px_45px_rgba(0,0,0,.22)] backdrop-blur-md;
+}
+.scanlines {
+  background-image:
+    linear-gradient(rgba(55, 217, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55, 217, 255, 0.025) 1px, transparent 1px);
+  background-size: 34px 34px;
+}

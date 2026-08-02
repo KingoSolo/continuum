@@ -67,6 +67,7 @@ CREATE TABLE "Mission" (
     "sponsorName" STRING NOT NULL,
     "authorityPolicy" STRING NOT NULL,
     "status" "MissionStatus" NOT NULL DEFAULT 'DRAFT',
+    "version" INT4 NOT NULL DEFAULT 1,
     "startedAt" TIMESTAMPTZ(3),
     "completedAt" TIMESTAMPTZ(3),
     "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -102,6 +103,8 @@ CREATE TABLE "MissionAssignment" (
     "releasedAt" TIMESTAMPTZ(3),
     "expiresAt" TIMESTAMPTZ(3),
     "handoffAcknowledgedAt" TIMESTAMPTZ(3),
+    "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "MissionAssignment_pkey" PRIMARY KEY ("id")
 );
@@ -199,6 +202,8 @@ CREATE TABLE "Debate" (
     "importance" "Importance" NOT NULL DEFAULT 'HIGH',
     "convenedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "resolvedAt" TIMESTAMPTZ(3),
+    "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "Debate_pkey" PRIMARY KEY ("id")
 );
@@ -235,6 +240,8 @@ CREATE TABLE "Hazard" (
     "identifiedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "nextReviewAt" TIMESTAMPTZ(3),
     "closedAt" TIMESTAMPTZ(3),
+    "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "Hazard_pkey" PRIMARY KEY ("id")
 );
@@ -255,6 +262,7 @@ CREATE TABLE "Lesson" (
     "validatedAt" TIMESTAMPTZ(3),
     "reviewAt" TIMESTAMPTZ(3),
     "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "Lesson_pkey" PRIMARY KEY ("id")
 );
@@ -280,6 +288,8 @@ CREATE TABLE "KnowledgeVaultEntry" (
     "status" "VaultEntryStatus" NOT NULL DEFAULT 'ACTIVE',
     "admittedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "reviewAt" TIMESTAMPTZ(3),
+    "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "KnowledgeVaultEntry_pkey" PRIMARY KEY ("id")
 );
@@ -289,9 +299,11 @@ CREATE TABLE "MissionContext" (
     "id" UUID NOT NULL,
     "missionId" UUID NOT NULL,
     "version" INT4 NOT NULL,
+    "revision" INT4 NOT NULL DEFAULT 1,
     "summary" STRING NOT NULL,
     "isCurrent" BOOL NOT NULL DEFAULT false,
     "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "MissionContext_pkey" PRIMARY KEY ("id")
 );
@@ -321,6 +333,7 @@ CREATE TABLE "MissionSnapshot" (
     "generatedAt" TIMESTAMPTZ(3),
     "publishedAt" TIMESTAMPTZ(3),
     "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "MissionSnapshot_pkey" PRIMARY KEY ("id")
 );
@@ -472,7 +485,7 @@ CREATE INDEX "Agent_status_idx" ON "Agent"("status");
 CREATE INDEX "MissionAssignment_missionId_status_idx" ON "MissionAssignment"("missionId", "status");
 
 -- CreateIndex
-CREATE INDEX "MissionAssignment_agentId_status_idx" ON "MissionAssignment"("agentId", "status");
+CREATE INDEX "MissionAssignment_agentId_missionId_status_idx" ON "MissionAssignment"("agentId", "missionId", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "MissionAssignment_missionId_agentId_role_assignedAt_key" ON "MissionAssignment"("missionId", "agentId", "role", "assignedAt");
@@ -526,10 +539,16 @@ CREATE INDEX "Hazard_missionId_status_importance_idx" ON "Hazard"("missionId", "
 CREATE INDEX "Hazard_ownerAgentId_status_idx" ON "Hazard"("ownerAgentId", "status");
 
 -- CreateIndex
+CREATE INDEX "Hazard_missionId_nextReviewAt_idx" ON "Hazard"("missionId", "nextReviewAt");
+
+-- CreateIndex
 CREATE INDEX "Lesson_missionId_status_importance_idx" ON "Lesson"("missionId", "status", "importance");
 
 -- CreateIndex
 CREATE INDEX "Lesson_supersedesId_idx" ON "Lesson"("supersedesId");
+
+-- CreateIndex
+CREATE INDEX "Lesson_missionId_createdAt_idx" ON "Lesson"("missionId", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "KnowledgeVault_name_key" ON "KnowledgeVault"("name");
@@ -670,7 +689,7 @@ ALTER TABLE "DebatePosition" ADD CONSTRAINT "DebatePosition_agentId_fkey" FOREIG
 ALTER TABLE "Hazard" ADD CONSTRAINT "Hazard_missionId_fkey" FOREIGN KEY ("missionId") REFERENCES "Mission"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Hazard" ADD CONSTRAINT "Hazard_ownerAgentId_fkey" FOREIGN KEY ("ownerAgentId") REFERENCES "Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Hazard" ADD CONSTRAINT "Hazard_ownerAgentId_fkey" FOREIGN KEY ("ownerAgentId") REFERENCES "Agent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_missionId_fkey" FOREIGN KEY ("missionId") REFERENCES "Mission"("id") ON DELETE CASCADE ON UPDATE CASCADE;

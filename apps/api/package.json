@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "test": "vitest run"
   },
+  "type": "module",
   "dependencies": {
     "@continuum/memory-engine": "workspace:*",
     "@nestjs/common": "^11.1.6",

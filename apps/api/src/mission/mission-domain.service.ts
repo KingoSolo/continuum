@@ -51,11 +51,14 @@ export class MissionDomainService {
   }
 
   async reportHazard(missionId: string, dto: ReportHazardDto) {
+    // reporterAgentId is an authorship concept (the Memory Capsule author and
+    // owner fallback), not a Hazard column — keep it out of the persisted row.
+    const { reporterAgentId, ...hazardData } = dto;
     const hazard = await this.prisma.hazard.create({
       data: {
-        ...dto,
+        ...hazardData,
         missionId,
-        ownerAgentId: dto.ownerAgentId ?? dto.reporterAgentId,
+        ownerAgentId: dto.ownerAgentId ?? reporterAgentId,
         status: HazardStatus.IDENTIFIED,
         identifiedAt: new Date(),
       },
@@ -64,7 +67,7 @@ export class MissionDomainService {
       missionId,
       CapsuleEntityType.HAZARD,
       hazard.id,
-      dto.reporterAgentId,
+      reporterAgentId,
       dto.importance,
       1,
       hazard.identifiedAt,
@@ -191,24 +194,53 @@ export class MissionDomainService {
   }
 
   async registerAgent(missionId: string, dto: RegisterMissionAgentDto) {
-    const agent = await this.prisma.agent.create({
-      data: {
+    // Registration is idempotent: the handle is a stable, globally-unique agent
+    // identity, so re-registering the same handle converges to the desired
+    // active state instead of throwing P2002. This keeps the endpoint retry-safe
+    // against double-clicks, client retries, and React StrictMode double-invoke.
+    const agent = await this.prisma.agent.upsert({
+      where: { handle: dto.handle },
+      create: {
         handle: dto.handle,
         displayName: dto.displayName,
         capabilities: dto.capabilities,
         status: AgentStatus.ACTIVE,
       },
+      update: {
+        displayName: dto.displayName,
+        capabilities: dto.capabilities,
+        status: AgentStatus.ACTIVE,
+      },
     });
-    const assignment = await this.prisma.missionAssignment.create({
-      data: {
+    // Reuse a live assignment for the same (mission, agent, role) rather than
+    // stacking duplicates on repeated calls within a run.
+    const existing = await this.prisma.missionAssignment.findFirst({
+      where: {
         missionId,
         agentId: agent.id,
         role: dto.role,
-        authority: dto.authority,
-        status: AssignmentStatus.ACTIVE,
-        activatedAt: new Date(),
+        status: { in: [AssignmentStatus.ASSIGNED, AssignmentStatus.ACTIVE] },
       },
     });
+    const assignment = existing
+      ? await this.prisma.missionAssignment.update({
+          where: { id: existing.id },
+          data: {
+            authority: dto.authority,
+            status: AssignmentStatus.ACTIVE,
+            activatedAt: existing.activatedAt ?? new Date(),
+          },
+        })
+      : await this.prisma.missionAssignment.create({
+          data: {
+            missionId,
+            agentId: agent.id,
+            role: dto.role,
+            authority: dto.authority,
+            status: AssignmentStatus.ACTIVE,
+            activatedAt: new Date(),
+          },
+        });
     return { agent, assignment };
   }
 
