@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cockroachdb-cloud": {
+      "type": "http",
+      "url": "https://cockroachlabs.cloud/mcp",
+      "headers": {
+        "mcp-cluster-id": "3f41b73f-a590-4ef5-b86a-baea73470ecb"
+      }
+    }
+  }
+}

@@ -6,8 +6,12 @@ import { MemoryApiService } from '../memory/memory-api.service.js';
 // Both DTOs must be value imports: they are consumed at runtime by the
 // ValidationPipe. `import type` erases the class, leaving an empty whitelist so
 // forbidNonWhitelisted rejects every field (400 "property X should not exist").
-import type { ReplaceMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
-import { RegisterMissionAgentDto } from '../mission/dto/mission-actions.dto.js';
+// Each is also referenced as a value in an @ApiBody({ type }) so that
+// consistent-type-imports does not push them back to `import type`.
+import {
+  RegisterMissionAgentDto,
+  ReplaceMissionAgentDto,
+} from '../mission/dto/mission-actions.dto.js';
 import { MissionDomainService } from '../mission/mission-domain.service.js';
 
 @ApiTags('Agent')
@@ -64,6 +68,10 @@ export class AgentController {
 
   @Post(':agentId/replace')
   @ApiOperation({ summary: 'Create a replacement agent and retrieve inherited Mission Context.' })
+  @ApiBody({
+    type: ReplaceMissionAgentDto,
+  })
+  @ApiParam({ name: 'agentId', format: 'uuid' })
   replace(
     @Param('missionId', new ParseUUIDPipe()) missionId: string,
     @Param('agentId', new ParseUUIDPipe()) agentId: string,

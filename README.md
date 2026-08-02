@@ -141,6 +141,27 @@ Underneath, the schema (`prisma/schema.prisma`) is fully relational — 31 model
 
 ---
 
+## AI Access — CockroachDB Managed MCP Server
+
+Continuum connects an AI coding agent (Claude Code) to its **live** CockroachDB
+Cloud cluster through CockroachDB's **Managed MCP Server**
+(`https://cockroachlabs.cloud/mcp`) — a hosted Model Context Protocol endpoint.
+Rather than a SQL shell, the agent inspects schemas and runs **read-only**
+queries against Continuum's mission memory directly: _"explain the mission state
+after the Navigation agent failure," "summarize the inherited context for the
+replacement agent,"_ and _"show the latest Mission Snapshot and its S3 archival
+status."_
+
+The connection is the project-scoped [`.mcp.json`](.mcp.json) at the repo root.
+It carries **no secret** — only the cluster ID (an identifier, not a
+credential) — and authenticates with OAuth 2.1 (PKCE) scoped to
+`mcp:read`, so it is read-only by default (write tools require explicit consent;
+`DROP`/`TRUNCATE` are unsupported). No application code or runtime dependency is
+added. Setup is in [`docs/cockroachdb-mcp.md`](docs/cockroachdb-mcp.md) and the
+demo prompts are in [`docs/mcp-demo.md`](docs/mcp-demo.md).
+
+---
+
 ## Repository Structure
 
 Continuum is a pnpm + Turborepo monorepo. Everything the demo depends on is **implemented today** — the **NestJS API**, the **Memory Engine**, **Mission Control** (web), the **headless simulator**, the seed, and the **test suites**. Three workspace packages — `shared`, `agents`, and `prompts` — are **intentionally reserved roadmap placeholders**, labeled as such below; they are scaffolding for future work, not missing pieces of the current system.
