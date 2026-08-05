@@ -271,6 +271,13 @@ export class MissionDomainService {
     return { ...replacement, inheritedContext: inherited.value };
   }
 
+  async listObjectives(missionId: string) {
+    return this.prisma.objective.findMany({
+      where: { missionId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async updateObjective(missionId: string, objectiveId: string, dto: UpdateObjectiveDto) {
     const objective = await this.prisma.objective.findFirst({
       where: { id: objectiveId, missionId },

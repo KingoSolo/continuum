@@ -14,10 +14,12 @@ export function Timeline({
   items,
   replayIndex,
   freshIds,
+  recoveredCount,
 }: {
   items: TimelineItem[];
   replayIndex: number | null;
   freshIds: string[];
+  recoveredCount: number | null;
 }) {
   return (
     <section className="panel scanlines h-[calc(100vh-145px)] overflow-hidden p-4">
@@ -26,6 +28,13 @@ export function Timeline({
         <p className="text-[11px] text-slate-500">
           Newest events first · {items.length} memory capsules
         </p>
+        {recoveredCount !== null && recoveredCount > 0 && (
+          <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-emerald-400/80">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+            Recovered Mission Memory · {recoveredCount} capsule
+            {recoveredCount === 1 ? '' : 's'} persisted from prior activity
+          </p>
+        )}
         {items.length === 0 ? (
           <p className="pt-8 text-sm text-slate-500">Awaiting mission telemetry.</p>
         ) : (

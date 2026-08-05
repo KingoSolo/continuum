@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -137,6 +137,17 @@ export class MissionController {
     @Param('lessonId', new ParseUUIDPipe()) lessonId: string,
   ) {
     return this.domain.promoteLesson(missionId, lessonId);
+  }
+
+  // Read path for the mission's objectives. Mission Control needs the real
+  // persisted status (and ids, to drive PATCH) rather than a local copy; without
+  // this the UI has no way to render objective state from the source of truth.
+  @Get('objectives')
+  @ApiOperation({ summary: "Retrieve the mission's objectives and their current status." })
+  @ApiParam(mission)
+  @ApiOkResponse({ description: 'Objectives ordered by creation time.' })
+  objectives(@Param('missionId', new ParseUUIDPipe()) missionId: string) {
+    return this.domain.listObjectives(missionId);
   }
 
   @Patch('objectives/:objectiveId')

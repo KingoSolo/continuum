@@ -139,8 +139,10 @@ async function main() {
         'Protect sufficient bandwidth for imagery, telemetry, and an emergency command uplink.',
       successCriteria: 'At least 92% of planned relay passes remain viable through Sol 4.',
       priority: Importance.CRITICAL,
-      status: ObjectiveStatus.ACTIVE,
-      progressSummary: 'Relay geometry remains viable with a narrowed traversal corridor.',
+      // Seeded objectives are approved but not yet worked: the mission has not
+      // started when the seed runs, so no objective may claim progress or
+      // completion. Execution moves them to ACTIVE and then ACHIEVED.
+      status: ObjectiveStatus.APPROVED,
     },
   });
   const sampleObjective = await prisma.objective.create({
@@ -150,8 +152,7 @@ async function main() {
       description: 'Identify and preserve one scientifically defensible clay-bearing sample.',
       successCriteria: 'Seal one core with a hydration signature above the mission threshold.',
       priority: Importance.HIGH,
-      status: ObjectiveStatus.ACTIVE,
-      progressSummary: 'Two candidate outcrops remain after the first traverse.',
+      status: ObjectiveStatus.APPROVED,
     },
   });
   await prisma.objective.create({
@@ -162,7 +163,7 @@ async function main() {
       description: 'Confirm mineral signature and slope safety at the Kappa outcrop.',
       successCriteria: 'Independent orbital and surface evidence agree before drill commitment.',
       priority: Importance.HIGH,
-      status: ObjectiveStatus.ACTIVE,
+      status: ObjectiveStatus.APPROVED,
     },
   });
 

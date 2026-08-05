@@ -26,7 +26,13 @@ export default function MissionControlPage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_50%_-20%,#11315a_0%,#050816_42%)] text-slate-100">
       <BootSequence />
       <MissionHeader
-        onStart={control.startDemo}
+        onStart={() => {
+          // A closed summary from a prior run must not suppress the next
+          // run's completion modal — without this, pressing Start Demo a
+          // second time in the same session finishes silently.
+          setSummaryOpen(true);
+          control.startDemo();
+        }}
         isRunning={control.isRunning}
         unavailable={control.isUnavailable}
       />
@@ -50,6 +56,7 @@ export default function MissionControlPage() {
             items={control.timeline}
             replayIndex={replayIndex}
             freshIds={control.newCapsuleIds}
+            recoveredCount={control.recoveredCapsuleCount}
           />
           <CapsuleFeed items={control.timeline} freshIds={control.newCapsuleIds} />
         </aside>
@@ -61,7 +68,7 @@ export default function MissionControlPage() {
             replayItem={replayItem}
           />
           <div className="grid gap-4 xl:grid-cols-2">
-            <ObjectivesCard />
+            <ObjectivesCard objectives={control.objectives} isLoading={control.objectivesLoading} />
             <ContextCard context={control.context} />
           </div>
         </section>
@@ -80,6 +87,7 @@ export default function MissionControlPage() {
           timeline={control.timeline}
           snapshots={control.snapshots}
           knowledge={control.knowledge.length}
+          elapsed={control.elapsed}
           onClose={() => setSummaryOpen(false)}
         />
       )}

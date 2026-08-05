@@ -6,11 +6,13 @@ export function MissionCompleteModal({
   timeline,
   snapshots,
   knowledge,
+  elapsed,
   onClose,
 }: {
   timeline: TimelineItem[];
   snapshots: number;
   knowledge: number;
+  elapsed: string;
   onClose: () => void;
 }) {
   const count = (value: string) => timeline.filter((item) => item.type.includes(value)).length;
@@ -38,7 +40,7 @@ export function MissionCompleteModal({
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3">
           {[
-            ['Mission duration', '01:00'],
+            ['Mission duration', elapsed],
             ['Observations', count('OBSERVATION')],
             ['Hazards', count('HAZARD')],
             ['Decisions', count('DECISION')],

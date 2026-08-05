@@ -1,4 +1,4 @@
-import type { MissionContext, TimelineItem } from '../types/mission';
+import type { MissionContext, Objective, TimelineItem } from '../types/mission';
 const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
 export const missionId = process.env.NEXT_PUBLIC_MISSION_ID ?? '';
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -21,8 +21,10 @@ export const api = {
       }>
     >('/timeline'),
   context: () => request<MissionContext>('/context'),
+  objectives: () => request<Objective[]>('/objectives'),
   knowledge: () => request<unknown[]>('/knowledge'),
-  snapshot: () => request<{ snapshot: { id: string } }>('/snapshots', { method: 'POST' }),
+  snapshot: () =>
+    request<{ snapshot: { id: string; version: number } }>('/snapshots', { method: 'POST' }),
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),

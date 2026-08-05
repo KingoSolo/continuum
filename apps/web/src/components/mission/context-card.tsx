@@ -21,7 +21,7 @@ export function ContextCard({ context }: { context?: MissionContext }) {
           value={`${context?.selectedCapsuleIds.length ?? 0} curated capsules`}
         />
         <p className="border-t border-slate-800 pt-3 text-xs text-slate-500">
-          Snapshot status:{' '}
+          Mission Context status:{' '}
           {context
             ? `Context v${context.context?.version ?? '—'} ready for handoff`
             : 'Awaiting API connection'}

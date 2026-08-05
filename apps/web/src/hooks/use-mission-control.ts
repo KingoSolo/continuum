@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, missionId } from '../services/api';
-import type { FleetAgent, TimelineItem } from '../types/mission';
+import type { FleetAgent, Objective, TimelineItem } from '../types/mission';
 
 const baseline: FleetAgent[] = [
   {
@@ -72,9 +72,18 @@ export function useMissionControl() {
   const [phase, setPhase] = useState('Survey preparation');
   const [elapsed, setElapsed] = useState('00:00:00');
   const knownCapsuleIds = useRef<string[]>([]);
+  const hasHydratedTimeline = useRef(false);
   const [newCapsuleIds, setNewCapsuleIds] = useState<string[]>([]);
+  const [recoveredCapsuleCount, setRecoveredCapsuleCount] = useState<number | null>(null);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // MissionSnapshot.version is assigned sequentially per mission
+  // (latestSnapshot.version + 1), so it already is the mission's total
+  // snapshot count — a correct, always-incrementing source. The alternative,
+  // counting timeline items of type MISSION_SNAPSHOT, is not: nothing in the
+  // snapshot-generation path records a Memory Capsule for the snapshot
+  // itself, so that count never moves when a real snapshot is created.
+  const [snapshotVersion, setSnapshotVersion] = useState<number | null>(null);
 
   const timelineQuery = useQuery({
     queryKey: ['timeline', missionId],
@@ -94,6 +103,12 @@ export function useMissionControl() {
     enabled: Boolean(missionId),
     refetchInterval: 10000,
   });
+  const objectivesQuery = useQuery({
+    queryKey: ['objectives', missionId],
+    queryFn: api.objectives,
+    enabled: Boolean(missionId),
+    refetchInterval: isRunning ? 2000 : 10000,
+  });
   const timeline = useMemo<TimelineItem[]>(
     () =>
       (timelineQuery.data ?? [])
@@ -112,6 +127,21 @@ export function useMissionControl() {
   useEffect(() => {
     const ids = timeline.map((t) => t.id);
 
+    // The first successful timeline fetch is Continuum recovering persisted
+    // Memory Capsules from CockroachDB, not new activity — those capsules may
+    // be seconds or weeks old. Seed the known-id set from that fetch without
+    // flagging any of it as "fresh" (which drives the live-arrival glow), and
+    // record how many capsules were recovered so the UI can say so. Every
+    // fetch after this one behaves as before: only ids not previously seen
+    // are treated as newly arrived.
+    if (!hasHydratedTimeline.current) {
+      if (!timelineQuery.isSuccess) return;
+      hasHydratedTimeline.current = true;
+      knownCapsuleIds.current = ids;
+      setRecoveredCapsuleCount(ids.length);
+      return;
+    }
+
     const previous = knownCapsuleIds.current;
 
     const arrived = ids.filter((id) => !previous.includes(id));
@@ -129,7 +159,7 @@ export function useMissionControl() {
     if (previous.length !== ids.length) {
       knownCapsuleIds.current = ids;
     }
-  }, [timeline]);
+  }, [timeline, timelineQuery.isSuccess]);
 
   function replayAgents(index: number | null) {
     if (index === null) return agents;
@@ -155,6 +185,15 @@ export function useMissionControl() {
     setHandoffStage(null);
     setHighlightFailure(false);
     setError(null);
+    // A prior run may have left the fleet mutated (navigation OFFLINE, a
+    // 'replacement' entry appended) and the phase/elapsed readouts at their
+    // final values. Without this reset, running the demo a second time in the
+    // same session appends a second 'replacement' entry with a duplicate id
+    // instead of replacing the first, and phase/elapsed briefly show the
+    // previous run's completed state before the new run overwrites them.
+    setAgents(baseline);
+    setPhase('Survey preparation');
+    setElapsed('00:00:00');
     // Each Start Demo press begins a fresh, isolated mission run. The run id
     // namespaces every agent handle so repeated runs never collide on the
     // globally-unique Agent.handle. An explicit NEXT_PUBLIC_SIMULATOR_RUN_ID is
@@ -189,6 +228,16 @@ export function useMissionControl() {
           capturedAt: '2042-07-14T09:00:00.000Z',
         });
       setPhase('Phase 1 — Survey underway');
+      // Objectives are pending until execution actually begins. Now that agents
+      // are assigned and the survey is underway, move the mission's real
+      // objectives to ACTIVE through the existing PATCH contract. The ids come
+      // from the API, so the UI never invents objective state.
+      const objectives = await api.objectives();
+      await Promise.all(
+        objectives
+          .filter((objective) => objective.status === 'PROPOSED' || objective.status === 'APPROVED')
+          .map((objective) => api.patch(`/objectives/${objective.id}`, { status: 'ACTIVE' })),
+      );
       await Promise.all([
         observation(navigation.agent.id, 'Western ingress route established.'),
         observation(science.agent.id, 'Unusual hydrated mineral deposit identified.', 'HIGH'),
@@ -196,6 +245,7 @@ export function useMissionControl() {
         observation(communications.agent.id, 'Orbital relay confirmed.'),
       ]);
       await client.invalidateQueries({ queryKey: ['timeline', missionId] });
+      await client.invalidateQueries({ queryKey: ['objectives', missionId] });
       setElapsed('00:00:12');
       await pause(500);
       setPhase('Phase 2 — Terrain assessment');
@@ -301,7 +351,8 @@ export function useMissionControl() {
       });
       await api.post(`/lessons/${lesson.id}/promote`);
       await api.context();
-      await api.snapshot();
+      const snapshot = await api.snapshot();
+      setSnapshotVersion(snapshot.snapshot.version);
       setPhase('Mission complete — Continuity validated');
       await client.invalidateQueries();
       setComplete(true);
@@ -323,6 +374,8 @@ export function useMissionControl() {
     timeline,
     context: contextQuery.data,
     knowledge: knowledgeQuery.data ?? [],
+    objectives: (objectivesQuery.data ?? []) as Objective[],
+    objectivesLoading: objectivesQuery.isPending,
     agents,
     replayAgents,
     isRunning,
@@ -332,8 +385,14 @@ export function useMissionControl() {
     elapsed,
     startDemo,
     isUnavailable: !missionId,
-    snapshots: timeline.filter((item) => item.type === 'MISSION_SNAPSHOT').length,
+    // Before this session generates a snapshot there is no live way to learn
+    // the mission's true snapshot count without a new read endpoint, so the
+    // pre-demo display falls back to the (best-effort) capsule count; once
+    // Start Demo publishes a snapshot, its own response is authoritative.
+    snapshots:
+      snapshotVersion ?? timeline.filter((item) => item.type === 'MISSION_SNAPSHOT').length,
     newCapsuleIds,
+    recoveredCapsuleCount,
     complete,
     error,
     apiConnected: contextQuery.isSuccess || timelineQuery.isSuccess,
