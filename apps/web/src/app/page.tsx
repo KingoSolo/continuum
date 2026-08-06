@@ -93,6 +93,8 @@ export default function MissionControlPage() {
           snapshots={control.snapshots}
           knowledge={control.knowledge.length}
           elapsed={control.elapsed}
+          ruleBasedCapsuleCount={control.ruleBasedCapsuleCount}
+          vectorAdditionalCapsuleCount={control.vectorAdditionalCapsuleCount}
           onClose={() => setSummaryOpen(false)}
         />
       )}

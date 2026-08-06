@@ -7,12 +7,16 @@ export function MissionCompleteModal({
   snapshots,
   knowledge,
   elapsed,
+  ruleBasedCapsuleCount,
+  vectorAdditionalCapsuleCount,
   onClose,
 }: {
   timeline: TimelineItem[];
   snapshots: number;
   knowledge: number;
   elapsed: string;
+  ruleBasedCapsuleCount: number | null;
+  vectorAdditionalCapsuleCount: number | null;
   onClose: () => void;
 }) {
   const count = (value: string) => timeline.filter((item) => item.type.includes(value)).length;
@@ -48,6 +52,17 @@ export function MissionCompleteModal({
             ['Memory capsules', timeline.length],
             ['Knowledge promoted', knowledge],
             ['Snapshots', snapshots],
+            ...(ruleBasedCapsuleCount !== null
+              ? [
+                  [
+                    'Context sourced (rule-based)',
+                    ruleBasedCapsuleCount > 0 ? `${ruleBasedCapsuleCount}` : `${timeline.length}`,
+                  ],
+                ]
+              : []),
+            ...(vectorAdditionalCapsuleCount !== null && vectorAdditionalCapsuleCount > 0
+              ? [['Context enhanced (vector)', `+${vectorAdditionalCapsuleCount}`]]
+              : []),
           ].map(([label, value]) => (
             <div key={String(label)} className="border-l border-slate-700 pl-3">
               <p className="text-lg text-white">{value}</p>

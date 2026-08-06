@@ -28,6 +28,8 @@ export interface ContextBuildOptions {
 export interface MissionContextBuild {
   context: MissionContext;
   selectedCapsuleIds: readonly string[];
+  ruleBasedCapsuleCount?: number;
+  vectorAdditionalCapsuleCount?: number;
 }
 
 export interface MissionSnapshotBuild {

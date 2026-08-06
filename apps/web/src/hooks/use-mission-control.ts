@@ -75,6 +75,10 @@ export function useMissionControl() {
   const hasHydratedTimeline = useRef(false);
   const [newCapsuleIds, setNewCapsuleIds] = useState<string[]>([]);
   const [recoveredCapsuleCount, setRecoveredCapsuleCount] = useState<number | null>(null);
+  const [ruleBasedCapsuleCount, setRuleBasedCapsuleCount] = useState<number | null>(null);
+  const [vectorAdditionalCapsuleCount, setVectorAdditionalCapsuleCount] = useState<number | null>(
+    null,
+  );
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Objectives visually show as complete during the demo-completion modal, but
@@ -344,7 +348,22 @@ export function useMissionControl() {
           capabilities: ['incident-response', 'continuity-handoff'],
         },
       );
-      await api.context();
+      const contextData = await api.context();
+
+      if (
+        contextData &&
+        typeof (contextData as unknown as Record<string, unknown>).ruleBasedCapsuleCount ===
+          'number'
+      ) {
+        setRuleBasedCapsuleCount(
+          (contextData as unknown as Record<string, unknown>).ruleBasedCapsuleCount as number,
+        );
+
+        setVectorAdditionalCapsuleCount(
+          ((contextData as unknown as Record<string, unknown>)
+            .vectorAdditionalCapsuleCount as number) ?? 0,
+        );
+      }
       await api.get(`/agents/${replacement.agent.id}/context`);
       setHandoffStage('Replacement Responder Online');
       setAgents((current) => [
@@ -421,6 +440,8 @@ export function useMissionControl() {
     snapshotArchiveStatus,
     newCapsuleIds,
     recoveredCapsuleCount,
+    ruleBasedCapsuleCount,
+    vectorAdditionalCapsuleCount,
     complete,
     objectivesCompleted,
     error,

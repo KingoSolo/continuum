@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # CockroachDB for local development
+  cockroachdb:
+    image: cockroachdb/cockroach:latest
+    container_name: continuum-cockroachdb
+    ports:
+      - '26257:26257' # SQL port
+      - '8080:8080' # Admin UI
+    environment:
+      INSECURE: 'true'
+    command: start-single-node --insecure
+    volumes:
+      - cockroachdb_data:/cockroach/cockroach-data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health?ready=1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Initialize database schema
+  migrate:
+    image: node:24-alpine
+    container_name: continuum-migrate
+    working_dir: /app
+    depends_on:
+      cockroachdb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: 'postgresql://root@cockroachdb:26257/defaultdb?sslmode=disable'
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+        npm install -g pnpm &&
+        pnpm install --frozen-lockfile &&
+        pnpm db:generate &&
+        pnpm db:migrate
+      "
+
+  # API server
+  api:
+    image: node:24-alpine
+    container_name: continuum-api
+    working_dir: /app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: 'postgresql://root@cockroachdb:26257/defaultdb?sslmode=disable'
+      AWS_REGION: 'us-east-1'
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    ports:
+      - '3001:3001'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        npm install -g pnpm &&
+        pnpm install --frozen-lockfile &&
+        pnpm db:generate &&
+        cd apps/api && pnpm start
+      "
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/swagger']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Web app
+  web:
+    image: node:24-alpine
+    container_name: continuum-web
+    working_dir: /app
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: 'http://api:3001'
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        npm install -g pnpm &&
+        pnpm install --frozen-lockfile &&
+        cd apps/web && pnpm dev
+      "
+
+volumes:
+  cockroachdb_data:
+    driver: local

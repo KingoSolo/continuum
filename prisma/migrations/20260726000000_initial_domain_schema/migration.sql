@@ -1,3 +1,6 @@
+-- Unlock tables if they exist (for idempotency and re-application)
+ALTER TABLE IF EXISTS "Mission" SET (schema_locked = false);
+
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -813,3 +816,6 @@ ALTER TABLE "LessonHazard" ADD CONSTRAINT "LessonHazard_lessonId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "LessonHazard" ADD CONSTRAINT "LessonHazard_hazardId_fkey" FOREIGN KEY ("hazardId") REFERENCES "Hazard"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Re-lock the Mission table for changefeed safety
+ALTER TABLE "Mission" SET (schema_locked = true);

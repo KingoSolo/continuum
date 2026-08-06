@@ -1,0 +1,96 @@
+# Example production values for Continuum Helm chart
+# Copy to values-prod.yaml and fill in your settings
+
+global:
+  environment: production
+  namespace: continuum
+
+api:
+  replicaCount: 3
+  image:
+    repository: your-registry/continuum-api
+    tag: v1.0.0
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+web:
+  replicaCount: 3
+  image:
+    repository: your-registry/continuum-web
+    tag: v1.0.0
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+
+config:
+  NODE_ENV: "production"
+  AWS_REGION: "us-east-1"
+  BEDROCK_MODEL_ID: "amazon.titan-embed-text-v2"
+
+# IMPORTANT: Set these before deploying
+secrets:
+  # Required: CockroachDB Serverless connection string
+  databaseUrl: "postgresql://user:pass@host:26257/defaultdb?sslmode=require"
+
+  # AWS credentials (required if using S3/Bedrock)
+  awsAccessKeyId: "YOUR_AWS_ACCESS_KEY"
+  awsSecretAccessKey: "YOUR_AWS_SECRET_KEY"
+  s3Bucket: "your-snapshot-bucket"
+
+  # Slack webhook (optional)
+  slackWebhookUrl: "https://hooks.slack.com/services/YOUR/WEBHOOK"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: continuum.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: continuum-web
+            port: 3000
+        - path: /api
+          pathType: Prefix
+          service:
+            name: continuum-api
+            port: 3001
+  tls:
+    enabled: true
+    secretName: continuum-tls
+
+networkPolicy:
+  enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

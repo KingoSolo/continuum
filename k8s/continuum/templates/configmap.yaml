@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: continuum-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: continuum
+data:
+  NODE_ENV: "{{ .Values.config.NODE_ENV }}"
+  AWS_REGION: "{{ .Values.config.AWS_REGION }}"
+  BEDROCK_MODEL_ID: "{{ .Values.config.BEDROCK_MODEL_ID }}"

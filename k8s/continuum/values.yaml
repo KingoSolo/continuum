@@ -1,0 +1,140 @@
+# Continuum Helm Chart Values
+# Override these values with your environment-specific settings
+
+# Global settings
+global:
+  environment: development
+  namespace: continuum
+
+# API Configuration
+api:
+  replicaCount: 2  # Horizontal scaling enabled
+  image:
+    repository: continuum-api
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3001
+    targetPort: 3001
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+  livenessProbe:
+    httpGet:
+      path: /swagger
+      port: 3001
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /swagger
+      port: 3001
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# Web (Mission Control) Configuration
+web:
+  replicaCount: 2
+  image:
+    repository: continuum-web
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 75
+
+# Database Configuration
+database:
+  # Use an external CockroachDB cluster
+  # For local dev: use docker-compose instead
+  # For production: use CockroachDB Serverless or a managed cluster
+  externalCluster: true
+  connectionString: "" # Set via secrets or configmap
+
+# Environment Variables
+config:
+  NODE_ENV: "production"
+  # AWS configuration
+  AWS_REGION: "us-east-1"
+  S3_BUCKET: "" # Set via secrets
+  BEDROCK_MODEL_ID: "amazon.titan-embed-text-v2"
+  SLACK_WEBHOOK_URL: "" # Set via secrets
+
+# Secrets (sensitive data)
+# These should be created separately or via sealed-secrets
+secrets:
+  databaseUrl: "" # REQUIRED: PostgreSQL connection string
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  s3Bucket: ""
+  slackWebhookUrl: ""
+
+# Ingress Configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: continuum.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: continuum-web
+            port: 3000
+        - path: /api
+          pathType: Prefix
+          service:
+            name: continuum-api
+            port: 3001
+  tls:
+    enabled: false
+    secretName: continuum-tls
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: continuum-web
+        - podSelector:
+            matchLabels:
+              app: continuum-api
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

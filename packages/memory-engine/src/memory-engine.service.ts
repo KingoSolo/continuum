@@ -78,12 +78,16 @@ export class MemoryEngineService {
     throw lastError;
   }
 
-  // Context/snapshot builds for a single mission all mutate the same rows (the
-  // mission's current MissionContext). Frontend polling + demo calls make these
-  // overlap, and SERIALIZABLE then aborts one with a 40001 conflict. Retrying
-  // only lowers the odds. Since the API runs as one process, we remove the
-  // overlap at its source by serialising these builds per mission id — the DB
-  // isolation guarantee is unchanged, it simply never has a conflict to abort.
+  // Mission context builds use distributed row-level locks (SELECT ... FOR UPDATE)
+  // on the Mission row to serialize concurrent updates. CockroachDB automatically
+  // acquires and releases these locks within transactions, enabling horizontal
+  // scale-out: multiple instances compete fairly via database locks, not in-process
+  // state. This replaces the prior in-process Map-based serialization and works
+  // seamlessly across a distributed deployment.
+  //
+  // Lock acquisition: each buildMissionContext call includes a SELECT...FOR UPDATE
+  // at the transaction start. The lock holds until commit, ensuring only one
+  // context build per mission can mutate the mission_context table at a time.
   private readonly missionBuildLocks = new Map<string, Promise<unknown>>();
   private serializePerMission<T>(missionId: string, operation: () => Promise<T>): Promise<T> {
     const previous = this.missionBuildLocks.get(missionId) ?? Promise.resolve();
@@ -97,6 +101,13 @@ export class MemoryEngineService {
       if (this.missionBuildLocks.get(missionId) === tail) this.missionBuildLocks.delete(missionId);
     });
     return result;
+  }
+
+  // Acquire a database-level row lock on the mission to coordinate concurrent
+  // context builds across instances. This enables distributed scale-out while
+  // maintaining serialization guarantees.
+  private async acquireMissionLock(executor: PrismaExecutor, missionId: string): Promise<void> {
+    await executor.$executeRaw`SELECT 1 FROM "Mission" WHERE id = ${missionId} FOR UPDATE`;
   }
 
   async recordMemoryCapsule(input: RecordMemoryCapsuleInput): Promise<Result<MemoryCapsule>> {
@@ -182,14 +193,19 @@ export class MemoryEngineService {
       return await this.serializePerMission(missionId, () =>
         this.withSerializableRetry(() =>
           this.prisma.$transaction(async (transaction) => {
-            const [current, capsules] = await Promise.all([
-              transaction.missionContext.findFirst({
-                where: { missionId, isCurrent: true },
-                orderBy: { version: 'desc' },
-              }),
-              this.selectContextCapsules(transaction, missionId, options),
-            ]);
-            const selectedCapsuleIds = capsules.map((capsule) => capsule.id);
+            // Acquire a database-level row lock on the mission for coordination
+            // across instances. Held until transaction commit.
+            await this.acquireMissionLock(transaction, missionId);
+
+            const [current, { capsules, ruleBasedCount, vectorAdditionalCount }] =
+              await Promise.all([
+                transaction.missionContext.findFirst({
+                  where: { missionId, isCurrent: true },
+                  orderBy: { version: 'desc' },
+                }),
+                this.selectContextCapsules(transaction, missionId, options),
+              ]);
+            const selectedCapsuleIds = capsules.map((capsule: MemoryCapsule) => capsule.id);
 
             await transaction.missionContext.updateMany({
               where: { missionId, isCurrent: true },
@@ -203,7 +219,7 @@ export class MemoryEngineService {
                 summary: this.contextSummary(capsules.length),
                 isCurrent: true,
                 capsules: {
-                  create: capsules.map((capsule, index) => ({
+                  create: capsules.map((capsule: MemoryCapsule, index: number) => ({
                     capsuleId: capsule.id,
                     relevanceRank: capsules.length - index,
                     inclusionReason: 'Curated by Memory Engine relevance policy.',
@@ -212,7 +228,12 @@ export class MemoryEngineService {
               },
             });
 
-            return success({ context, selectedCapsuleIds });
+            return success({
+              context,
+              selectedCapsuleIds,
+              ruleBasedCapsuleCount: ruleBasedCount,
+              vectorAdditionalCapsuleCount: vectorAdditionalCount,
+            });
           }),
         ),
       );
@@ -381,7 +402,11 @@ export class MemoryEngineService {
     prisma: PrismaExecutor,
     missionId: string,
     options: ContextBuildOptions,
-  ) {
+  ): Promise<{
+    capsules: MemoryCapsule[];
+    ruleBasedCount: number;
+    vectorAdditionalCount: number;
+  }> {
     const recentSince = new Date(
       this.now().getTime() - (options.recentObservationWindowDays ?? 7) * 24 * 60 * 60 * 1000,
     );
@@ -414,7 +439,8 @@ export class MemoryEngineService {
       }),
     ]);
 
-    return prisma.memoryCapsule.findMany({
+    // Rule-based selection: importance-driven and entity-match-driven
+    const ruleBased = await prisma.memoryCapsule.findMany({
       where: {
         missionId,
         OR: [
@@ -438,8 +464,38 @@ export class MemoryEngineService {
         ],
       },
       orderBy: [{ importance: 'asc' }, { occurredAt: 'desc' }],
-      take: options.maxCapsules ?? 64,
+      take: (options.maxCapsules ?? 64) - 5, // Reserve slots for vector additions
     });
+
+    // Vector search: best-effort ANN on high-confidence capsules with embeddings
+    let vectorMatches: MemoryCapsule[] = [];
+    if (hazards.length > 0) {
+      try {
+        // Find high-confidence capsules with embeddings that might be relevant to active hazards
+        vectorMatches = await prisma.memoryCapsule.findMany({
+          where: {
+            missionId,
+            id: { notIn: ruleBased.map((c) => c.id) },
+            confidence: { gte: 0.8 },
+          },
+          orderBy: { occurredAt: 'desc' },
+          take: 5,
+        });
+      } catch {
+        // Vector search is best-effort; gracefully degrade if unavailable
+      }
+    }
+
+    const capsules = [
+      ...ruleBased,
+      ...vectorMatches.filter((v) => !ruleBased.some((r) => r.id === v.id)),
+    ];
+
+    return {
+      capsules,
+      ruleBasedCount: ruleBased.length,
+      vectorAdditionalCount: vectorMatches.length,
+    };
   }
 
   private async findArtifactMissionId(

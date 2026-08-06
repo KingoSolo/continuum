@@ -32,6 +32,7 @@ function createPrismaMock() {
     missionSnapshot: { findFirst: vi.fn(), create: vi.fn() },
     missionAssignment: { findFirst: vi.fn() },
     knowledgeVaultEntry: { findMany: vi.fn() },
+    $executeRaw: vi.fn(async () => undefined), // For row-level locking
   };
 
   return { ...mock, $transaction: vi.fn(async (callback) => callback(mock)) };
@@ -87,13 +88,16 @@ describe('MemoryEngineService', () => {
 
     expect(result).toEqual({
       ok: true,
-      value: {
+      value: expect.objectContaining({
         context: { id: contextId, missionId, version: 3 },
         selectedCapsuleIds: ['critical-capsule', 'hazard-capsule'],
-      },
+        ruleBasedCapsuleCount: expect.any(Number),
+        vectorAdditionalCapsuleCount: expect.any(Number),
+      }),
     });
+    // take is reduced to reserve slots for vector additions (maxCapsules - 5)
     expect(prisma.memoryCapsule.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ missionId }), take: 12 }),
+      expect.objectContaining({ where: expect.objectContaining({ missionId }), take: 7 }),
     );
     expect(prisma.missionContext.updateMany).toHaveBeenCalledWith({
       where: { missionId, isCurrent: true },

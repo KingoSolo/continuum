@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+.claude/
+.git/
+k8s/
+pnpm-lock.yaml
