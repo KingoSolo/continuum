@@ -3,10 +3,12 @@ export function LiveStatusBar({
   apiConnected,
   memoryConnected,
   simulatorRunning,
+  awsConfigured,
 }: {
   apiConnected: boolean;
   memoryConnected: boolean;
   simulatorRunning: boolean;
+  awsConfigured?: boolean;
 }) {
   const status = (label: string, value: string, active: boolean) => (
     <span className="flex items-center gap-1.5">
@@ -26,7 +28,7 @@ export function LiveStatusBar({
         {status('COCKROACHDB', memoryConnected ? 'CONNECTED' : 'AWAITING API', memoryConnected)}
         {status('API', apiConnected ? 'CONNECTED' : 'CHECKING', apiConnected)}
         {status('SIMULATOR', simulatorRunning ? 'RUNNING' : 'STANDBY', simulatorRunning)}
-        {status('AWS', 'UNAVAILABLE', false)}
+        {status('AWS', awsConfigured ? 'CONFIGURED' : 'UNAVAILABLE', awsConfigured ?? false)}
       </div>
     </div>
   );

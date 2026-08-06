@@ -1,15 +1,24 @@
 export function MissionOverview({ elapsed, phase }: { elapsed: string; phase: string }) {
+  const isComplete = phase.includes('complete');
+  const isRunning = !phase.includes('Survey preparation') && !isComplete;
+  const statusValue = isComplete ? 'COMPLETE' : isRunning ? 'ACTIVE' : 'STANDBY';
+  const statusTone = isComplete
+    ? 'text-emerald-400'
+    : isRunning
+      ? 'text-emerald-400'
+      : 'text-slate-400';
+
   return (
     <section className="panel grid gap-4 p-5 md:grid-cols-4">
       <div className="md:col-span-2">
-        <p className="text-xs tracking-[.2em] text-cyan">MISSION OVERVIEW</p>
-        <h2 className="mt-2 text-2xl font-bold">ARES-7 / MARTIAN LAVA TUBE</h2>
+        <p className="text-xs tracking-[.2em] text-cyan">INCIDENT RESPONSE</p>
+        <h2 className="mt-2 text-2xl font-bold">INC-4291 / PRIMARY DATABASE DEGRADATION</h2>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Survey a stable lava-tube route and characterise hydrated mineral deposits for future
-          human habitation.
+          Mitigate cascading connection-pool exhaustion via failover; preserve incident context
+          across on-call responder handoff.
         </p>
       </div>
-      <Metric label="STATUS" value="ACTIVE" tone="text-emerald-400" />
+      <Metric label="STATUS" value={statusValue} tone={statusTone} />
       <Metric label="ELAPSED" value={elapsed} tone="text-white" />
       <div className="border-t border-slate-800 pt-3 md:col-span-4">
         <span className="text-xs text-slate-500">CURRENT PHASE </span>

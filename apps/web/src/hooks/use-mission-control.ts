@@ -7,43 +7,43 @@ import type { FleetAgent, Objective, TimelineItem } from '../types/mission';
 const baseline: FleetAgent[] = [
   {
     id: 'navigation',
-    name: 'Navigation',
-    role: 'Route planning',
+    name: 'On-Call Engineer',
+    role: 'Incident authority',
     status: 'ACTIVE',
     health: 100,
     confidence: 94,
-    task: 'Establish ingress route',
-    lastMemory: 'Awaiting telemetry',
+    task: 'Direct incident response',
+    lastMemory: 'Awaiting alert',
   },
   {
     id: 'science',
-    name: 'Science',
-    role: 'Geology',
+    name: 'Database/SRE',
+    role: 'Diagnostics',
     status: 'ACTIVE',
     health: 100,
     confidence: 92,
-    task: 'Survey mineral deposit',
-    lastMemory: 'Awaiting telemetry',
+    task: 'Analyze database health',
+    lastMemory: 'Awaiting metrics',
   },
   {
     id: 'power',
-    name: 'Power',
-    role: 'Systems',
+    name: 'Infrastructure',
+    role: 'Failover execution',
     status: 'ACTIVE',
     health: 100,
     confidence: 98,
-    task: 'Monitor reserve capacity',
-    lastMemory: 'Awaiting telemetry',
+    task: 'Execute failover',
+    lastMemory: 'Awaiting signal',
   },
   {
     id: 'communications',
-    name: 'Communications',
-    role: 'Relay',
+    name: 'Status Page / Comms',
+    role: 'Notifications',
     status: 'ACTIVE',
     health: 100,
     confidence: 97,
-    task: 'Hold orbital relay',
-    lastMemory: 'Awaiting telemetry',
+    task: 'Update stakeholders',
+    lastMemory: 'Awaiting incident updates',
   },
 ];
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -77,6 +77,12 @@ export function useMissionControl() {
   const [recoveredCapsuleCount, setRecoveredCapsuleCount] = useState<number | null>(null);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Objectives visually show as complete during the demo-completion modal, but
+  // are never persisted to the database as ACHIEVED. This way, refreshing the
+  // page returns to a fresh mission state for repeated demo runs, while still
+  // giving the satisfying visual closure of seeing objectives complete during
+  // the narrative.
+  const [objectivesCompleted, setObjectivesCompleted] = useState(false);
   // MissionSnapshot.version is assigned sequentially per mission
   // (latestSnapshot.version + 1), so it already is the mission's total
   // snapshot count — a correct, always-incrementing source. The alternative,
@@ -84,6 +90,7 @@ export function useMissionControl() {
   // snapshot-generation path records a Memory Capsule for the snapshot
   // itself, so that count never moves when a real snapshot is created.
   const [snapshotVersion, setSnapshotVersion] = useState<number | null>(null);
+  const [snapshotArchiveStatus, setSnapshotArchiveStatus] = useState<string | null>(null);
 
   const timelineQuery = useQuery({
     queryKey: ['timeline', missionId],
@@ -194,6 +201,7 @@ export function useMissionControl() {
     setAgents(baseline);
     setPhase('Survey preparation');
     setElapsed('00:00:00');
+    setObjectivesCompleted(false);
     // Each Start Demo press begins a fresh, isolated mission run. The run id
     // namespaces every agent handle so repeated runs never collide on the
     // globally-unique Agent.handle. An explicit NEXT_PUBLIC_SIMULATOR_RUN_ID is
@@ -220,16 +228,16 @@ export function useMissionControl() {
         api.post('/observations', {
           authorAgentId: agent,
           statement,
-          scope: 'ARES-7 lava tube survey',
-          sourceName: 'ARES-7 sensor suite',
+          scope: 'Production database incident response',
+          sourceName: 'Production monitoring and alerting',
           isDirectEvidence: true,
           importance,
           confidence: 0.94,
-          capturedAt: '2042-07-14T09:00:00.000Z',
+          capturedAt: new Date().toISOString(),
         });
-      setPhase('Phase 1 — Survey underway');
+      setPhase('Phase 1 — Incident triage');
       // Objectives are pending until execution actually begins. Now that agents
-      // are assigned and the survey is underway, move the mission's real
+      // are assigned and the incident response is underway, move the mission's real
       // objectives to ACTIVE through the existing PATCH contract. The ids come
       // from the API, so the UI never invents objective state.
       const objectives = await api.objectives();
@@ -239,122 +247,141 @@ export function useMissionControl() {
           .map((objective) => api.patch(`/objectives/${objective.id}`, { status: 'ACTIVE' })),
       );
       await Promise.all([
-        observation(navigation.agent.id, 'Western ingress route established.'),
-        observation(science.agent.id, 'Unusual hydrated mineral deposit identified.', 'HIGH'),
-        observation(power.agent.id, 'Power systems healthy.'),
-        observation(communications.agent.id, 'Orbital relay confirmed.'),
+        observation(
+          navigation.agent.id,
+          'Primary database connection pool exhaustion detected at 98% utilization.',
+        ),
+        observation(
+          science.agent.id,
+          'Primary read latency elevated to 850ms p99; replica-east is nominal at 120ms.',
+          'HIGH',
+        ),
+        observation(power.agent.id, 'Replica-east is healthy; replication lag under 100ms.'),
+        observation(communications.agent.id, 'Status page updated to investigating state.'),
       ]);
       await client.invalidateQueries({ queryKey: ['timeline', missionId] });
       await client.invalidateQueries({ queryKey: ['objectives', missionId] });
       setElapsed('00:00:12');
       await pause(500);
-      setPhase('Phase 2 — Terrain assessment');
+      setPhase('Phase 2 — Root cause assessment');
       await observation(
         science.agent.id,
-        'Fractured basalt detected beneath western traverse.',
+        'Connection leak suspected in session management layer; pool exhaustion cascading.',
         'CRITICAL',
       );
       const hazard = await api.post<{ id: string }>('/hazards', {
         reporterAgentId: science.agent.id,
         ownerAgentId: navigation.agent.id,
-        title: 'Unstable western traverse',
-        description: 'Fractured basalt collapse risk.',
-        impact: 'Mobility loss',
+        title: 'Primary database connection pool exhaustion risks cascading outage',
+        description:
+          'Sustained exhaustion at 98% utilization creates imminent risk of full availability loss.',
+        impact: 'Complete write unavailability; estimated user impact 100% of affected region.',
         likelihood: 0.74,
-        mitigationPlan: 'Use eastern shelf.',
+        mitigationPlan: 'Failover to replica-east immediately.',
         importance: 'CRITICAL',
       });
       await api.post('/reasoning', {
         authorAgentId: science.agent.id,
-        claim: 'Western traverse is unsafe.',
-        conclusion: 'Use eastern shelf.',
-        assumptions: 'Fracture density predicts load risk.',
+        claim: 'Primary database is unsafe for writes due to connection pool exhaustion.',
+        conclusion: 'Failover to replica-east immediately.',
+        assumptions: 'Replica-east replication lag remains stable.',
         importance: 'CRITICAL',
-        confidence: 0.89,
+        confidence: 0.88,
       });
       const debate = await api.post<{ id: string }>('/debates', {
         convenedByAgentId: science.agent.id,
-        question: 'Continue on western ingress?',
+        question: 'Should we immediately failover to replica-east?',
         importance: 'CRITICAL',
         positions: [
-          { agentId: navigation.agent.id, stance: 'SUPPORT', argument: 'Shortest route.' },
-          { agentId: science.agent.id, stance: 'OPPOSE', argument: 'Collapse risk.' },
+          {
+            agentId: navigation.agent.id,
+            stance: 'SUPPORT',
+            argument: 'Fastest path to recovery.',
+          },
+          {
+            agentId: power.agent.id,
+            stance: 'SUPPORT',
+            argument: 'Replica-east is ready and healthy.',
+          },
         ],
       });
       await api.post(`/debates/${debate.id}/resolve`, {
-        resolutionSummary: 'Safety prevails.',
-        resolutionAuthority: 'Mission safety policy',
+        resolutionSummary: 'Failover approved.',
+        resolutionAuthority: 'On-Call authority policy',
       });
       const decision = await api.post<{ id: string }>('/decisions', {
         proposedByAgentId: navigation.agent.id,
         decidedByAgentId: navigation.agent.id,
-        title: 'Use eastern shelf',
-        chosenOption: 'Reroute east',
-        rationale: 'Avoid unstable terrain.',
-        effectiveScope: 'Current traverse',
+        title: 'Failover to replica-east',
+        chosenOption: 'Shift write traffic to replica-east',
+        rationale: 'Eliminates cascading outage risk while investigation continues.',
+        effectiveScope: 'All production database write traffic',
         importance: 'CRITICAL',
       });
       await api.post(`/decisions/${decision.id}/execute`);
       await client.invalidateQueries({ queryKey: ['timeline', missionId] });
       setElapsed('00:00:46');
-      setPhase('Phase 3 — Navigation contingency');
+      setPhase('Phase 3 — On-call handoff');
       setHighlightFailure(true);
       setAgents((current) =>
         current.map((agent) =>
           agent.id === 'navigation'
-            ? { ...agent, status: 'OFFLINE', health: 0, task: '⚠ Navigation Agent Offline' }
+            ? { ...agent, status: 'OFFLINE', health: 0, task: '⚠ On-Call Engineer Offline' }
             : agent,
         ),
       );
       await api.post(`/agents/${navigation.agent.id}/fail`);
-      setHandoffStage('Recovering Mission Context…');
+      setHandoffStage('Recovering Incident Context…');
       await pause(550);
       setHandoffStage('Loading Operational Memory…');
       const replacement = await api.post<{ agent: { id: string } }>(
         `/agents/${navigation.agent.id}/replace`,
         {
-          handle: `${run}-navigation-replacement`,
-          displayName: 'Navigation Replacement Agent',
-          role: 'Navigation',
+          handle: `${run}-oncall-replacement`,
+          displayName: 'On-Call Replacement',
+          role: 'Incident authority',
           authority: 'DECIDE',
-          capabilities: ['route-planning', 'continuity-handoff'],
+          capabilities: ['incident-response', 'continuity-handoff'],
         },
       );
       await api.context();
       await api.get(`/agents/${replacement.agent.id}/context`);
-      setHandoffStage('Replacement Agent Online');
+      setHandoffStage('Replacement Responder Online');
       setAgents((current) => [
         ...current,
         {
           id: 'replacement',
-          name: 'Navigation Replacement',
-          role: 'Continuity handoff',
+          name: 'On-Call Replacement',
+          role: 'Continuity response',
           status: 'REPLACEMENT',
           health: 100,
           confidence: 96,
-          task: 'Mission Context Retrieved',
-          lastMemory: 'Eastern shelf decision inherited',
+          task: 'Incident Context Retrieved',
+          lastMemory: 'Failover decision inherited',
         },
       ]);
       await pause(550);
-      setHandoffStage('Mission Resumed');
+      setHandoffStage('Incident Response Continues');
       setElapsed('00:01:00');
-      setPhase('Phase 4 — Mission resumed');
+      setPhase('Phase 4 — Incident resolution');
       await api.patch(`/hazards/${hazard.id}/resolve`);
       const lesson = await api.post<{ id: string }>('/lessons', {
         authorAgentId: replacement.agent.id,
-        title: 'Terrain hazards must survive agent handoff',
-        statement: 'Curated Mission Context enabled immediate safe route continuity.',
-        applicability: 'Autonomous surface missions',
+        title: 'Incident context must survive on-call responder handoff',
+        statement:
+          'Curated incident context enabled the replacement responder to inherit the hazard, failover decision, and investigation plan instantly—without re-analysis.',
+        applicability: 'Production incident response and on-call rotation handoffs',
         importance: 'HIGH',
-        confidence: 0.96,
+        confidence: 0.92,
       });
       await api.post(`/lessons/${lesson.id}/promote`);
       await api.context();
       const snapshot = await api.snapshot();
       setSnapshotVersion(snapshot.snapshot.version);
-      setPhase('Mission complete — Continuity validated');
+      setSnapshotArchiveStatus(snapshot.snapshot.archiveStatus);
+      setPhase('Incident resolved — Continuity validated');
       await client.invalidateQueries();
+      setObjectivesCompleted(true);
       setComplete(true);
     } catch (cause) {
       // Stop the demo cleanly on any failed API call: existing mission data is
@@ -391,9 +418,11 @@ export function useMissionControl() {
     // Start Demo publishes a snapshot, its own response is authoritative.
     snapshots:
       snapshotVersion ?? timeline.filter((item) => item.type === 'MISSION_SNAPSHOT').length,
+    snapshotArchiveStatus,
     newCapsuleIds,
     recoveredCapsuleCount,
     complete,
+    objectivesCompleted,
     error,
     apiConnected: contextQuery.isSuccess || timelineQuery.isSuccess,
     memoryConnected: contextQuery.isSuccess,

@@ -16,7 +16,7 @@ export function MissionHeader({
           <Activity size={15} /> CONTINUUM / MISSION CONTROL
         </div>
         <h1 className="mt-1 text-xl font-bold tracking-tight text-white">
-          ARES-7 <span className="text-slate-500">LAVA TUBE SURVEY</span>
+          INC-4291 <span className="text-slate-500">PRIMARY DATABASE DEGRADATION</span>
         </h1>
       </div>
       <button

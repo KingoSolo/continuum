@@ -5,6 +5,8 @@ import type { MissionSnapshotBuild } from '@continuum/memory-engine';
 
 import type { PrismaService } from '../memory/memory.module.js';
 import { S3Service } from './s3.service.js';
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { SlackService } from '../slack/slack.service.js';
 
 /**
  * Best-effort archival of a freshly generated Mission Snapshot to Amazon S3.
@@ -22,6 +24,7 @@ export class SnapshotArchiveService {
   constructor(
     @Inject(S3Service) private readonly s3: S3Service,
     @Inject('PRISMA_SERVICE') private readonly prisma: PrismaService,
+    private readonly slack: SlackService,
   ) {}
 
   async archive(missionId: string, build: MissionSnapshotBuild): Promise<MissionSnapshotBuild> {
@@ -36,6 +39,17 @@ export class SnapshotArchiveService {
       const body = JSON.stringify(build, null, 2);
       const archiveUri = await this.s3.putJson(key, body);
       this.logger.log(`Archived snapshot ${snapshot.id} to ${archiveUri}.`);
+      // Best-effort Slack notification
+      try {
+        if (this.slack.isEnabled()) {
+          await this.slack.postMessage(
+            `📸 Mission snapshot archived`,
+            `Version ${snapshot.version}: ${snapshot.summary}`,
+          );
+        }
+      } catch (slackError) {
+        this.logger.error('Failed to post snapshot archive notification to Slack', slackError);
+      }
       return this.persistOutcome(build, {
         archiveUri,
         archiveStatus: SnapshotArchiveStatus.UPLOADED,

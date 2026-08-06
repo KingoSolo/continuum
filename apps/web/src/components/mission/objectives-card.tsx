@@ -26,9 +26,11 @@ const styles: Record<Presentation, { icon: typeof Circle; mark: string; label: s
 export function ObjectivesCard({
   objectives,
   isLoading,
+  allCompleted,
 }: {
   objectives: Objective[];
   isLoading: boolean;
+  allCompleted?: boolean;
 }) {
   return (
     <section className="panel p-5">
@@ -40,7 +42,9 @@ export function ObjectivesCard({
           </p>
         ) : (
           objectives.map((objective) => {
-            const presentation = presentationByStatus[objective.status] ?? 'pending';
+            const presentation = allCompleted
+              ? 'complete'
+              : (presentationByStatus[objective.status] ?? 'pending');
             const style = styles[presentation];
             const Icon = style.icon;
             return (

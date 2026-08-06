@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from '../components/common/providers';
 export const metadata: Metadata = {
   title: 'Continuum Mission Control',
-  description: 'ARES-7 persistent mission intelligence',
+  description: 'Persistent incident response memory with curated context handoff',
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

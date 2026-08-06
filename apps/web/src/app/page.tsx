@@ -40,6 +40,7 @@ export default function MissionControlPage() {
         apiConnected={control.apiConnected}
         memoryConnected={control.memoryConnected}
         simulatorRunning={control.isRunning}
+        awsConfigured={control.snapshotArchiveStatus === 'UPLOADED'}
       />
       <HandoffAlert stage={control.handoffStage} />
       {control.error && (
@@ -68,7 +69,11 @@ export default function MissionControlPage() {
             replayItem={replayItem}
           />
           <div className="grid gap-4 xl:grid-cols-2">
-            <ObjectivesCard objectives={control.objectives} isLoading={control.objectivesLoading} />
+            <ObjectivesCard
+              objectives={control.objectives}
+              isLoading={control.objectivesLoading}
+              allCompleted={control.objectivesCompleted}
+            />
             <ContextCard context={control.context} />
           </div>
         </section>

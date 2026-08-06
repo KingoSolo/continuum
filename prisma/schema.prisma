@@ -591,6 +591,9 @@ model MemoryCapsule {
   // Normalized confidence (0..1) is validated in the domain layer before write.
   confidence           Float
   embeddingReference   String?
+  // Vector embedding (1536-dim) for semantic similarity search via CockroachDB Distributed Vector Indexing.
+  // Populated by Bedrock if configured; updated via raw SQL since Prisma lacks native VECTOR type support.
+  embedding            Unsupported("vector(1536)")?
   createdAt            DateTime          @default(now()) @db.Timestamptz(3)
 
   mission   Mission                  @relation(fields: [missionId], references: [id], onDelete: Cascade)

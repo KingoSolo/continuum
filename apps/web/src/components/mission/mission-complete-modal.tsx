@@ -28,7 +28,7 @@ export function MissionCompleteModal({
             <p className="flex items-center gap-2 text-xs tracking-[.2em] text-emerald-400">
               <CheckCircle2 size={15} /> MISSION COMPLETE
             </p>
-            <h2 className="mt-2 text-2xl font-bold">ARES-7 continuity validated</h2>
+            <h2 className="mt-2 text-2xl font-bold">INC-4291 continuity validated</h2>
           </div>
           <button
             onClick={onClose}

@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import {
   AgentStatus,
   AssignmentStatus,
@@ -11,6 +17,8 @@ import {
 import type { Importance } from '@prisma/client';
 import type { MemoryEngineService, RecordableCapsuleEntityType } from '@continuum/memory-engine';
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { SlackService } from '../slack/slack.service.js';
 import type { PrismaService } from '../memory/memory.module.js';
 import type {
   CreateDecisionDto,
@@ -27,11 +35,14 @@ import type {
 
 @Injectable()
 export class MissionDomainService {
+  private readonly logger = new Logger(MissionDomainService.name);
+
   constructor(
     @Inject('PRISMA_SERVICE')
     private readonly prisma: PrismaService,
     @Inject('MEMORY_ENGINE')
     private readonly memoryEngine: MemoryEngineService,
+    private readonly slack: SlackService,
   ) {}
 
   async recordObservation(missionId: string, dto: RecordObservationDto) {
@@ -72,6 +83,14 @@ export class MissionDomainService {
       1,
       hazard.identifiedAt,
     );
+    // Best-effort Slack notification — never blocks the write
+    try {
+      if (this.slack.isEnabled()) {
+        await this.slack.postMessage(`🚨 Hazard reported: ${hazard.title}`, hazard.description);
+      }
+    } catch (error) {
+      this.logger.error('Failed to post hazard notification to Slack', error);
+    }
     return hazard;
   }
 
@@ -154,10 +173,19 @@ export class MissionDomainService {
 
   async executeDecision(missionId: string, decisionId: string) {
     await this.requireDecision(missionId, decisionId);
-    return this.prisma.decision.update({
+    const decision = await this.prisma.decision.update({
       where: { id: decisionId },
       data: { status: DecisionStatus.EXECUTED, executedAt: new Date() },
     });
+    // Best-effort Slack notification — never blocks the write
+    try {
+      if (this.slack.isEnabled()) {
+        await this.slack.postMessage(`✅ Decision executed: ${decision.title}`, decision.rationale);
+      }
+    } catch (error) {
+      this.logger.error('Failed to post decision notification to Slack', error);
+    }
+    return decision;
   }
 
   async recordLesson(missionId: string, dto: RecordLessonDto) {
@@ -190,6 +218,17 @@ export class MissionDomainService {
       create: { vaultId: vault.id, lessonId, stewardAgentId: lesson.authorAgentId },
       update: { status: 'ACTIVE', reviewAt: lesson.reviewAt },
     });
+    // Best-effort Slack notification — never blocks the write
+    try {
+      if (this.slack.isEnabled()) {
+        await this.slack.postMessage(
+          `📚 Lesson promoted to Knowledge Vault: ${admitted.title}`,
+          admitted.statement,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to post lesson promotion notification to Slack', error);
+    }
     return { lesson: admitted, entry };
   }
 
@@ -250,10 +289,22 @@ export class MissionDomainService {
       where: { id: agentId },
       data: { status: AgentStatus.SUSPENDED },
     });
-    return this.prisma.missionAssignment.update({
+    const updated = await this.prisma.missionAssignment.update({
       where: { id: assignment.id },
       data: { status: AssignmentStatus.SUSPENDED },
     });
+    // Best-effort Slack notification — never blocks the write
+    try {
+      if (this.slack.isEnabled()) {
+        await this.slack.postMessage(
+          `⚠️ Agent offline: ${assignment.role}`,
+          'Initiating replacement and context handoff.',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to post agent failure notification to Slack', error);
+    }
+    return updated;
   }
 
   async replaceAgent(missionId: string, agentId: string, dto: ReplaceMissionAgentDto) {
@@ -268,6 +319,17 @@ export class MissionDomainService {
       replacement.agent.id,
     );
     if (!inherited.ok) throw new ServiceUnavailableException(inherited.error.message);
+    // Best-effort Slack notification — never blocks the write
+    try {
+      if (this.slack.isEnabled()) {
+        await this.slack.postMessage(
+          `✅ Replacement agent online: ${replacement.assignment.role}`,
+          `Inherited ${inherited.value.selectedCapsuleIds.length} context capsules without re-analysis.`,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to post replacement agent notification to Slack', error);
+    }
     return { ...replacement, inheritedContext: inherited.value };
   }
 

@@ -26,6 +26,11 @@ import type {
 
 type PrismaExecutor = PrismaClient | Prisma.TransactionClient;
 
+// Optional embedding service interface — any object with an embed(text: string) method
+interface EmbeddingService {
+  embed(text: string): Promise<number[]>;
+}
+
 const ACTIVE_HAZARD_STATUSES = [
   HazardStatus.IDENTIFIED,
   HazardStatus.ASSESSED,
@@ -45,6 +50,7 @@ export class MemoryEngineService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly now: () => Date = () => new Date(),
+    private readonly embeddingService?: EmbeddingService,
   ) {}
 
   // CockroachDB uses SERIALIZABLE isolation; concurrent transactions that touch
@@ -132,6 +138,28 @@ export class MemoryEngineService {
       }
 
       const capsule = await this.prisma.memoryCapsule.create({ data: input });
+
+      // Best-effort vector embedding — never blocks or affects the capsule write
+      if (this.embeddingService) {
+        try {
+          const textToEmbed = await this.extractArtifactText(
+            input.referencedEntityType,
+            input.referencedEntityId,
+          );
+          if (textToEmbed) {
+            const embedding = await this.embeddingService.embed(textToEmbed);
+            // Persist the embedding via raw SQL (Prisma has no native VECTOR type for CockroachDB)
+            await this.prisma.$executeRaw`
+              UPDATE "MemoryCapsule"
+              SET embedding = ${embedding}
+              WHERE id = ${capsule.id}
+            `;
+          }
+        } catch {
+          // Embedding failure is silent — the capsule is already persisted and the write succeeded
+        }
+      }
+
       return success(capsule);
     } catch {
       return failure('PERSISTENCE_FAILURE', 'Unable to record the Memory Capsule.');
@@ -436,6 +464,62 @@ export class MemoryEngineService {
     }
 
     return null;
+  }
+
+  private async extractArtifactText(
+    entityType: RecordableCapsuleEntityType,
+    entityId: string,
+  ): Promise<string | null> {
+    try {
+      switch (entityType) {
+        case CapsuleEntityType.OBSERVATION: {
+          const obs = await this.prisma.observation.findUnique({
+            where: { id: entityId },
+            select: { statement: true },
+          });
+          return obs?.statement ?? null;
+        }
+        case CapsuleEntityType.HAZARD: {
+          const hazard = await this.prisma.hazard.findUnique({
+            where: { id: entityId },
+            select: { title: true, description: true },
+          });
+          return hazard ? `${hazard.title}. ${hazard.description}` : null;
+        }
+        case CapsuleEntityType.REASONING: {
+          const reasoning = await this.prisma.reasoning.findUnique({
+            where: { id: entityId },
+            select: { claim: true, conclusion: true },
+          });
+          return reasoning ? `${reasoning.claim} → ${reasoning.conclusion}` : null;
+        }
+        case CapsuleEntityType.LESSON: {
+          const lesson = await this.prisma.lesson.findUnique({
+            where: { id: entityId },
+            select: { title: true, statement: true },
+          });
+          return lesson ? `${lesson.title}. ${lesson.statement}` : null;
+        }
+        case CapsuleEntityType.DECISION: {
+          const decision = await this.prisma.decision.findUnique({
+            where: { id: entityId },
+            select: { title: true, rationale: true },
+          });
+          return decision ? `${decision.title}: ${decision.rationale}` : null;
+        }
+        case CapsuleEntityType.DEBATE: {
+          const debate = await this.prisma.debate.findUnique({
+            where: { id: entityId },
+            select: { question: true },
+          });
+          return debate?.question ?? null;
+        }
+      }
+      return null;
+    } catch {
+      // If artifact fetch fails, embedding is skipped silently
+      return null;
+    }
   }
 
   private contextSummary(capsuleCount: number): string {

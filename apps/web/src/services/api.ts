@@ -24,7 +24,9 @@ export const api = {
   objectives: () => request<Objective[]>('/objectives'),
   knowledge: () => request<unknown[]>('/knowledge'),
   snapshot: () =>
-    request<{ snapshot: { id: string; version: number } }>('/snapshots', { method: 'POST' }),
+    request<{ snapshot: { id: string; version: number; archiveStatus: string } }>('/snapshots', {
+      method: 'POST',
+    }),
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),

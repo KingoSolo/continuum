@@ -33,59 +33,61 @@ async function main() {
   await prisma.knowledgeVault.deleteMany({
     where: { name: 'Continuum Operational Knowledge Vault' },
   });
-  await prisma.mission.deleteMany({ where: { code: 'ARES-7' } });
+  await prisma.mission.deleteMany({ where: { code: 'INC-4291' } });
   await prisma.agent.deleteMany({
-    where: { handle: { in: ['atlas', 'kepler', 'sagan', 'nova'] } },
+    where: { handle: { in: ['oncall', 'databasesre', 'infrastructure', 'statuspage'] } },
   });
 
-  const atlas = await prisma.agent.create({
+  const oncall = await prisma.agent.create({
     data: {
-      handle: 'atlas',
-      displayName: 'Atlas',
-      description: 'Mission lead responsible for synthesis and authorized decisions.',
+      handle: 'oncall',
+      displayName: 'On-Call Engineer',
+      description:
+        'On-call responder responsible for incident triage and authorized response decisions.',
       status: AgentStatus.ACTIVE,
-      capabilities: ['mission-planning', 'risk-governance', 'decision-synthesis'],
+      capabilities: ['incident-triage', 'risk-assessment', 'decision-authority'],
     },
   });
-  const kepler = await prisma.agent.create({
+  const databasesre = await prisma.agent.create({
     data: {
-      handle: 'kepler',
-      displayName: 'Kepler',
-      description: 'Orbital-analysis agent responsible for evidence assessment.',
+      handle: 'databasesre',
+      displayName: 'Database/SRE',
+      description: 'Database specialist responsible for system health assessment and diagnostics.',
       status: AgentStatus.ACTIVE,
-      capabilities: ['orbital-analysis', 'telemetry-interpretation', 'uncertainty-analysis'],
+      capabilities: ['database-diagnosis', 'performance-analysis', 'root-cause-analysis'],
     },
   });
-  const sagan = await prisma.agent.create({
+  const infrastructure = await prisma.agent.create({
     data: {
-      handle: 'sagan',
-      displayName: 'Sagan',
-      description: 'Surface-science agent responsible for site and sample analysis.',
+      handle: 'infrastructure',
+      displayName: 'Infrastructure',
+      description: 'Infrastructure engineer responsible for failover and contingency execution.',
       status: AgentStatus.ACTIVE,
-      capabilities: ['surface-science', 'sample-prioritization', 'evidence-review'],
+      capabilities: ['failover-execution', 'infrastructure-management', 'contingency-response'],
     },
   });
-  const nova = await prisma.agent.create({
+  const statuspage = await prisma.agent.create({
     data: {
-      handle: 'nova',
-      displayName: 'Nova',
-      description: 'Operations agent responsible for communications and contingency planning.',
+      handle: 'statuspage',
+      displayName: 'Status Page / Comms',
+      description:
+        'Communications agent responsible for status updates and stakeholder notifications.',
       status: AgentStatus.ACTIVE,
-      capabilities: ['operations', 'communications', 'hazard-monitoring'],
+      capabilities: ['communications', 'status-updates', 'incident-messaging'],
     },
   });
 
   const mission = await prisma.mission.create({
     data: {
-      code: 'ARES-7',
-      name: 'Ares-7 Valles Marineris Sample Return Reconnaissance',
+      code: 'INC-4291',
+      name: 'Primary Database Degradation',
       description:
-        'A six-sol autonomous reconnaissance mission to select and preserve a high-value hydrated-mineral sample while maintaining a safe relay communications window.',
-      sponsorName: 'Continuum Mars Exploration Directorate',
+        'A production incident response to primary database shard degradation with cascading connection-pool exhaustion, requiring immediate failover to replica-east and on-call responder handoff.',
+      sponsorName: 'Production Infrastructure',
       authorityPolicy:
-        'Atlas may decide route and sampling sequence; any irreversible exposure to a dust event requires explicit hazard acceptance.',
+        'On-Call Engineer may authorize failover and mitigation steps; any full-primary outage requires explicit hazard escalation to engineering leadership.',
       status: MissionStatus.ACTIVE,
-      startedAt: at('2038-09-14T06:00:00.000Z'),
+      startedAt: at('2025-08-06T14:30:00.000Z'),
     },
   });
 
@@ -93,51 +95,51 @@ async function main() {
     data: [
       {
         missionId: mission.id,
-        agentId: atlas.id,
-        role: 'Mission Lead',
+        agentId: oncall.id,
+        role: 'On-Call Engineer',
         authority: AuthorityLevel.DECIDE,
         status: AssignmentStatus.ACTIVE,
-        assignedAt: at('2038-09-13T16:00:00.000Z'),
-        activatedAt: at('2038-09-14T06:00:00.000Z'),
-        handoffAcknowledgedAt: at('2038-09-14T06:02:00.000Z'),
+        assignedAt: at('2025-08-06T14:25:00.000Z'),
+        activatedAt: at('2025-08-06T14:30:00.000Z'),
+        handoffAcknowledgedAt: at('2025-08-06T14:32:00.000Z'),
       },
       {
         missionId: mission.id,
-        agentId: kepler.id,
-        role: 'Orbital Analyst',
+        agentId: databasesre.id,
+        role: 'Database/SRE',
         authority: AuthorityLevel.CONTRIBUTE,
         status: AssignmentStatus.ACTIVE,
-        assignedAt: at('2038-09-13T16:00:00.000Z'),
-        activatedAt: at('2038-09-14T06:00:00.000Z'),
+        assignedAt: at('2025-08-06T14:25:00.000Z'),
+        activatedAt: at('2025-08-06T14:30:00.000Z'),
       },
       {
         missionId: mission.id,
-        agentId: sagan.id,
-        role: 'Surface Science Lead',
+        agentId: infrastructure.id,
+        role: 'Infrastructure Lead',
         authority: AuthorityLevel.PROPOSE,
         status: AssignmentStatus.ACTIVE,
-        assignedAt: at('2038-09-13T16:00:00.000Z'),
-        activatedAt: at('2038-09-14T06:00:00.000Z'),
+        assignedAt: at('2025-08-06T14:25:00.000Z'),
+        activatedAt: at('2025-08-06T14:30:00.000Z'),
       },
       {
         missionId: mission.id,
-        agentId: nova.id,
-        role: 'Operations and Safety Lead',
-        authority: AuthorityLevel.PROPOSE,
+        agentId: statuspage.id,
+        role: 'Communications Lead',
+        authority: AuthorityLevel.CONTRIBUTE,
         status: AssignmentStatus.ACTIVE,
-        assignedAt: at('2038-09-13T16:00:00.000Z'),
-        activatedAt: at('2038-09-14T06:00:00.000Z'),
+        assignedAt: at('2025-08-06T14:25:00.000Z'),
+        activatedAt: at('2025-08-06T14:30:00.000Z'),
       },
     ],
   });
 
-  const relayObjective = await prisma.objective.create({
+  const failoverObjective = await prisma.objective.create({
     data: {
       missionId: mission.id,
-      title: 'Maintain relay visibility through Sol 4',
+      title: 'Execute failover to replica-east within SLA',
       description:
-        'Protect sufficient bandwidth for imagery, telemetry, and an emergency command uplink.',
-      successCriteria: 'At least 92% of planned relay passes remain viable through Sol 4.',
+        'Shift primary write traffic to the replica-east database cluster to restore service availability.',
+      successCriteria: 'Write traffic migrated with zero data loss and <5 minute recovery time.',
       priority: Importance.CRITICAL,
       // Seeded objectives are approved but not yet worked: the mission has not
       // started when the seed runs, so no objective may claim progress or
@@ -145,12 +147,14 @@ async function main() {
       status: ObjectiveStatus.APPROVED,
     },
   });
-  const sampleObjective = await prisma.objective.create({
+  const contextObjective = await prisma.objective.create({
     data: {
       missionId: mission.id,
-      title: 'Acquire a hydrated-mineral core from Candor Ridge',
-      description: 'Identify and preserve one scientifically defensible clay-bearing sample.',
-      successCriteria: 'Seal one core with a hydration signature above the mission threshold.',
+      title: 'Preserve incident context across on-call handoff',
+      description:
+        'Enable the replacement responder to inherit hazards, decisions, and diagnostic insights without re-analysis.',
+      successCriteria:
+        'Replacement responder receives curated context within 30 seconds of handoff.',
       priority: Importance.HIGH,
       status: ObjectiveStatus.APPROVED,
     },
@@ -158,251 +162,259 @@ async function main() {
   await prisma.objective.create({
     data: {
       missionId: mission.id,
-      parentObjectiveId: sampleObjective.id,
-      title: 'Validate Site Kappa before drilling',
-      description: 'Confirm mineral signature and slope safety at the Kappa outcrop.',
-      successCriteria: 'Independent orbital and surface evidence agree before drill commitment.',
+      parentObjectiveId: contextObjective.id,
+      title: 'Validate connection pool recovery on replica-east',
+      description:
+        'Confirm that replica-east is stable and accepting new connections at full rate.',
+      successCriteria: 'Connection pool exhaustion metric below 5% and response latency <100ms.',
       priority: Importance.HIGH,
       status: ObjectiveStatus.APPROVED,
     },
   });
 
-  const dustObservation = await prisma.observation.create({
+  const poolExhaustionObservation = await prisma.observation.create({
     data: {
       missionId: mission.id,
-      authorAgentId: nova.id,
-      statement: 'An elevated dust plume is moving eastward across the secondary relay corridor.',
-      scope: 'Communications and power operations',
-      sourceName: 'Ares-7 environmental sensor suite',
-      provenanceUri: 'mission://ares-7/telemetry/environment/sol-2-0412',
+      authorAgentId: statuspage.id,
+      statement:
+        'Primary database connection pool exhaustion detected; 98% of available connections in use.',
+      scope: 'Production database infrastructure',
+      sourceName: 'Database monitoring and alerting system',
+      provenanceUri: 'incident://inc-4291/monitoring/connection-pool-14-30',
       isDirectEvidence: true,
       status: ObservationStatus.VALIDATED,
       importance: Importance.CRITICAL,
-      confidence: 0.91,
+      confidence: 0.97,
       classification: Classification.INTERNAL,
-      capturedAt: at('2038-09-16T04:12:00.000Z'),
+      capturedAt: at('2025-08-06T14:30:00.000Z'),
     },
   });
-  const orbitalObservation = await prisma.observation.create({
+  const latencyObservation = await prisma.observation.create({
     data: {
       missionId: mission.id,
-      authorAgentId: kepler.id,
+      authorAgentId: databasesre.id,
       statement:
-        'Orbital spectroscopy shows a strong smectite signature at Site Kappa, 180 metres south of the planned waypoint.',
-      scope: 'Site selection',
-      sourceName: 'Mars Reconnaissance Orbiter spectral pass 2038-258',
-      provenanceUri: 'mission://ares-7/orbital/spectral-pass-2038-258',
+        'Primary database read latency elevated to 850ms p99; replica-east showing nominal latency of 120ms p99.',
+      scope: 'Query performance and system health',
+      sourceName: 'APM tracing and database performance counters',
+      provenanceUri: 'incident://inc-4291/metrics/latency-analysis-14-35',
       isDirectEvidence: true,
       status: ObservationStatus.VALIDATED,
       importance: Importance.HIGH,
-      confidence: 0.88,
+      confidence: 0.94,
       classification: Classification.INTERNAL,
-      capturedAt: at('2038-09-16T05:04:00.000Z'),
+      capturedAt: at('2025-08-06T14:35:00.000Z'),
     },
   });
-  const surfaceObservation = await prisma.observation.create({
+  const replicaHealthObservation = await prisma.observation.create({
     data: {
       missionId: mission.id,
-      authorAgentId: sagan.id,
+      authorAgentId: infrastructure.id,
       statement:
-        'Close-range imagery at Site Kappa shows fine-grained layered material with no visible crust fracture along the proposed drill face.',
-      scope: 'Sample integrity and drilling safety',
-      sourceName: 'Ares-7 mast camera and microscopic imager',
-      provenanceUri: 'mission://ares-7/imaging/site-kappa/sol-2',
+        'Replica-east cluster is healthy; replication lag <100ms and connection pool utilization at 8%.',
+      scope: 'Failover readiness and replica health',
+      sourceName: 'Infrastructure monitoring and failover readiness checks',
+      provenanceUri: 'incident://inc-4291/infrastructure/replica-east-health-14-37',
       isDirectEvidence: true,
       status: ObservationStatus.VALIDATED,
       importance: Importance.HIGH,
-      confidence: 0.84,
+      confidence: 0.96,
       classification: Classification.INTERNAL,
-      capturedAt: at('2038-09-16T06:26:00.000Z'),
+      capturedAt: at('2025-08-06T14:37:00.000Z'),
     },
   });
 
-  const dustHazard = await prisma.hazard.create({
+  const connectionPoolHazard = await prisma.hazard.create({
     data: {
       missionId: mission.id,
-      ownerAgentId: nova.id,
-      title: 'Dust plume may degrade the secondary relay pass',
+      ownerAgentId: infrastructure.id,
+      title: 'Primary database connection pool exhaustion risks cascading outage',
       description:
-        'The plume could lower received signal quality and reduce the available emergency command window.',
-      impact: 'Loss of high-bandwidth uplink during a sample-return-critical period.',
-      likelihood: 0.62,
-      indicators: 'Signal-to-noise ratio below 12 dB or plume opacity above 0.45.',
+        'Sustained connection pool exhaustion at 98% utilization creates a critical risk of full primary database unavailability within minutes.',
+      impact:
+        'Complete loss of write availability for all downstream services; estimated user impact 100% of affected region.',
+      likelihood: 0.74,
+      indicators:
+        'Connection pool utilization >95%, failed connection attempt spike, or write latency >1s.',
       mitigationPlan:
-        'Use the northern ridge relay corridor and transmit compressed imagery before traverse.',
-      escalationPath: 'Escalate to Atlas for acceptance before entering a no-relay interval.',
-      reviewCadence: 'Every relay pass',
+        'Immediately failover to replica-east; scale up primary connection pool; investigate root cause of connection leak.',
+      escalationPath:
+        'Escalate to engineering leadership if failover does not restore availability within 5 minutes.',
+      reviewCadence: 'Continuous monitoring; manual review after incident resolution.',
       status: HazardStatus.MITIGATED,
       importance: Importance.CRITICAL,
       classification: Classification.INTERNAL,
-      identifiedAt: at('2038-09-16T04:20:00.000Z'),
-      nextReviewAt: at('2038-09-16T12:00:00.000Z'),
+      identifiedAt: at('2025-08-06T14:30:00.000Z'),
+      nextReviewAt: at('2025-08-06T15:00:00.000Z'),
     },
   });
   await prisma.hazardObjective.createMany({
     data: [
-      { hazardId: dustHazard.id, objectiveId: relayObjective.id },
-      { hazardId: dustHazard.id, objectiveId: sampleObjective.id },
+      { hazardId: connectionPoolHazard.id, objectiveId: failoverObjective.id },
+      { hazardId: connectionPoolHazard.id, objectiveId: contextObjective.id },
     ],
   });
 
-  const routeReasoning = await prisma.reasoning.create({
+  const failoverReasoning = await prisma.reasoning.create({
     data: {
       missionId: mission.id,
-      authorAgentId: kepler.id,
+      authorAgentId: databasesre.id,
       claim:
-        'A northern ridge traverse preserves the primary relay geometry while retaining access to Site Kappa.',
-      conclusion: 'Divert north for one relay cycle, then approach Kappa from the west.',
+        'Primary database is unsafe for writes due to connection pool exhaustion; replica-east is ready and healthy.',
+      conclusion: 'Failover to replica-east immediately to restore write availability.',
       assumptions:
-        'The plume continues eastward at its measured velocity and the ridge slope remains below the rover threshold.',
-      alternatives: 'Remain on the direct southern route or defer sampling until Sol 4.',
+        'Replica-east replication lag remains <100ms and no cascading failures affect the replica cluster.',
+      alternatives:
+        'Scale primary connection pool or roll back recent deployments to free connections.',
       uncertainty:
-        'The plume speed could change by ±18%, affecting the duration of degraded visibility.',
+        'Root cause of connection leak is unknown; failover eliminates the hazard but does not address the underlying issue.',
       status: ReasoningStatus.ACCEPTED,
       importance: Importance.HIGH,
-      confidence: 0.79,
-      createdAt: at('2038-09-16T06:40:00.000Z'),
+      confidence: 0.88,
+      createdAt: at('2025-08-06T14:40:00.000Z'),
     },
   });
   await prisma.reasoningObservation.createMany({
     data: [
       {
-        reasoningId: routeReasoning.id,
-        observationId: dustObservation.id,
+        reasoningId: failoverReasoning.id,
+        observationId: poolExhaustionObservation.id,
         stance: EvidenceStance.SUPPORTS,
       },
       {
-        reasoningId: routeReasoning.id,
-        observationId: orbitalObservation.id,
+        reasoningId: failoverReasoning.id,
+        observationId: replicaHealthObservation.id,
         stance: EvidenceStance.CONTEXT,
       },
     ],
   });
 
-  const siteDebate = await prisma.debate.create({
+  const failoverDebate = await prisma.debate.create({
     data: {
       missionId: mission.id,
       question:
-        'Should ARES-7 divert to Site Kappa before the dust plume reaches the primary relay corridor?',
+        'Should we immediately failover to replica-east to mitigate the primary database connection pool exhaustion?',
       admissibilityRules:
-        'Positions must cite validated telemetry or imagery and state operational trade-offs.',
+        'Positions must cite validated monitoring data or infrastructure assessments and state recovery trade-offs.',
       resolutionSummary:
-        'Proceed with a constrained northern traverse and drill only after surface confirmation.',
-      resolutionAuthority: 'Atlas, Mission Lead',
+        'Proceed with immediate failover to replica-east; conduct post-mortem to identify root cause.',
+      resolutionAuthority: 'On-Call Engineer',
       status: DebateStatus.RESOLVED,
       importance: Importance.HIGH,
-      convenedAt: at('2038-09-16T06:55:00.000Z'),
-      resolvedAt: at('2038-09-16T07:20:00.000Z'),
+      convenedAt: at('2025-08-06T14:38:00.000Z'),
+      resolvedAt: at('2025-08-06T14:42:00.000Z'),
     },
   });
   await prisma.debatePosition.createMany({
     data: [
       {
-        debateId: siteDebate.id,
-        agentId: sagan.id,
+        debateId: failoverDebate.id,
+        agentId: infrastructure.id,
         stance: DebatePositionStance.SUPPORT,
         argument:
-          'Kappa offers the strongest hydration signature and surface imagery supports a safe drill face.',
+          'Replica-east is healthy and can accept the write load; failover eliminates the cascading outage risk immediately.',
       },
       {
-        debateId: siteDebate.id,
-        agentId: nova.id,
+        debateId: failoverDebate.id,
+        agentId: databasesre.id,
         stance: DebatePositionStance.CONDITIONAL,
         argument:
-          'Support only if the northern ridge is used and compressed telemetry is transmitted before descent.',
+          'Support failover, but start a parallel investigation into the root cause to prevent recurrence.',
       },
       {
-        debateId: siteDebate.id,
-        agentId: kepler.id,
-        stance: DebatePositionStance.ALTERNATIVE,
+        debateId: failoverDebate.id,
+        agentId: statuspage.id,
+        stance: DebatePositionStance.SUPPORT,
         argument:
-          'Defer drilling until Sol 4 if the next relay pass falls below the signal threshold.',
-        isDissent: true,
+          'Failover is the fastest path to user-facing recovery; delays increase the incident severity.',
+        isDissent: false,
       },
     ],
   });
   await prisma.debateObservation.createMany({
     data: [
-      { debateId: siteDebate.id, observationId: dustObservation.id },
-      { debateId: siteDebate.id, observationId: orbitalObservation.id },
-      { debateId: siteDebate.id, observationId: surfaceObservation.id },
+      { debateId: failoverDebate.id, observationId: poolExhaustionObservation.id },
+      { debateId: failoverDebate.id, observationId: latencyObservation.id },
+      { debateId: failoverDebate.id, observationId: replicaHealthObservation.id },
     ],
   });
   await prisma.debateReasoning.create({
-    data: { debateId: siteDebate.id, reasoningId: routeReasoning.id },
+    data: { debateId: failoverDebate.id, reasoningId: failoverReasoning.id },
   });
 
-  const routeDecision = await prisma.decision.create({
+  const failoverDecision = await prisma.decision.create({
     data: {
       missionId: mission.id,
-      proposedByAgentId: atlas.id,
-      decidedByAgentId: atlas.id,
-      title: 'Adopt northern ridge traverse to Site Kappa',
+      proposedByAgentId: oncall.id,
+      decidedByAgentId: oncall.id,
+      title: 'Failover to replica-east',
       chosenOption:
-        'Transmit compressed imagery, take the northern ridge relay corridor, then validate Kappa before drilling.',
+        'Immediately shift write traffic to replica-east; initiate parallel root-cause investigation; post incident-state update to status page.',
       rationale:
-        'This preserves a viable relay window while maintaining access to the highest-confidence hydrated-mineral target.',
-      effectiveScope: 'Sol 2 traverse and Site Kappa sampling sequence.',
-      reviewTrigger: 'Signal-to-noise ratio below 12 dB or slope estimate above 14 degrees.',
+        'Replica-east is healthy and ready; failover eliminates the cascading outage risk within minutes while allowing investigation to continue.',
+      effectiveScope: 'All production database write traffic',
+      reviewTrigger: 'Connection pool utilization >95% on replica-east or replication lag >1s.',
       reversalConditions:
-        'Abort to the safe waypoint and defer drilling until the next viable relay pass.',
+        'Revert to primary only after root cause is identified and fixed; re-enable monitoring for early detection.',
       status: DecisionStatus.DECIDED,
       importance: Importance.CRITICAL,
-      proposedAt: at('2038-09-16T07:22:00.000Z'),
-      decidedAt: at('2038-09-16T07:25:00.000Z'),
+      proposedAt: at('2025-08-06T14:42:00.000Z'),
+      decidedAt: at('2025-08-06T14:43:00.000Z'),
     },
   });
   await prisma.decisionReasoning.create({
-    data: { decisionId: routeDecision.id, reasoningId: routeReasoning.id },
+    data: { decisionId: failoverDecision.id, reasoningId: failoverReasoning.id },
   });
   await prisma.decisionObservation.createMany({
     data: [
-      { decisionId: routeDecision.id, observationId: dustObservation.id },
-      { decisionId: routeDecision.id, observationId: surfaceObservation.id },
+      { decisionId: failoverDecision.id, observationId: poolExhaustionObservation.id },
+      { decisionId: failoverDecision.id, observationId: replicaHealthObservation.id },
     ],
   });
   await prisma.decisionHazard.create({
-    data: { decisionId: routeDecision.id, hazardId: dustHazard.id },
+    data: { decisionId: failoverDecision.id, hazardId: connectionPoolHazard.id },
   });
   await prisma.decisionObjective.createMany({
     data: [
-      { decisionId: routeDecision.id, objectiveId: relayObjective.id },
-      { decisionId: routeDecision.id, objectiveId: sampleObjective.id },
+      { decisionId: failoverDecision.id, objectiveId: failoverObjective.id },
+      { decisionId: failoverDecision.id, objectiveId: contextObjective.id },
     ],
   });
 
   const lesson = await prisma.lesson.create({
     data: {
       missionId: mission.id,
-      authorAgentId: atlas.id,
-      title: 'Pair relay protection with sample selection under weather uncertainty',
+      authorAgentId: oncall.id,
+      title: 'Incident context must survive on-call responder handoff',
       statement:
-        'When dust threatens a relay corridor, a short geometry-preserving diversion can protect communications without abandoning a high-confidence science target.',
+        'When an on-call responder is paged away during an active incident, the replacement must inherit curated hazards, decisions, and diagnostics instantly—without re-analysis. Memory systems that preserve continuity enable safe handoffs at speed.',
       applicability:
-        'Autonomous surface missions with alternate relay geometry and time-sensitive sampling objectives.',
+        'Production incident response, on-call rotation handoffs, multi-agent autonomous systems where agents may fail or be replaced mid-mission.',
       limitations:
-        'Not applicable where the diversion exceeds energy reserve or no independent surface confirmation is available.',
+        'Requires real-time memory curation; not applicable if incident state is too large to query quickly or if the replacement lacks authority to act on inherited context.',
       status: LessonStatus.ADMITTED,
       importance: Importance.HIGH,
-      confidence: 0.81,
-      validatedAt: at('2038-09-16T08:10:00.000Z'),
-      reviewAt: at('2039-03-16T00:00:00.000Z'),
+      confidence: 0.92,
+      validatedAt: at('2025-08-06T14:45:00.000Z'),
+      reviewAt: at('2025-09-06T00:00:00.000Z'),
     },
   });
   await prisma.lessonObservation.createMany({
     data: [
-      { lessonId: lesson.id, observationId: dustObservation.id },
-      { lessonId: lesson.id, observationId: surfaceObservation.id },
+      { lessonId: lesson.id, observationId: poolExhaustionObservation.id },
+      { lessonId: lesson.id, observationId: replicaHealthObservation.id },
     ],
   });
   await prisma.lessonReasoning.create({
-    data: { lessonId: lesson.id, reasoningId: routeReasoning.id },
+    data: { lessonId: lesson.id, reasoningId: failoverReasoning.id },
   });
   await prisma.lessonDecision.create({
-    data: { lessonId: lesson.id, decisionId: routeDecision.id },
+    data: { lessonId: lesson.id, decisionId: failoverDecision.id },
   });
-  await prisma.lessonDebate.create({ data: { lessonId: lesson.id, debateId: siteDebate.id } });
-  await prisma.lessonHazard.create({ data: { lessonId: lesson.id, hazardId: dustHazard.id } });
+  await prisma.lessonDebate.create({ data: { lessonId: lesson.id, debateId: failoverDebate.id } });
+  await prisma.lessonHazard.create({
+    data: { lessonId: lesson.id, hazardId: connectionPoolHazard.id },
+  });
 
   const vault = await prisma.knowledgeVault.create({
     data: {
@@ -416,93 +428,93 @@ async function main() {
     data: {
       vaultId: vault.id,
       lessonId: lesson.id,
-      stewardAgentId: atlas.id,
+      stewardAgentId: oncall.id,
       status: VaultEntryStatus.ACTIVE,
-      admittedAt: at('2038-09-16T08:15:00.000Z'),
-      reviewAt: at('2039-03-16T00:00:00.000Z'),
+      admittedAt: at('2025-08-06T14:45:00.000Z'),
+      reviewAt: at('2025-09-06T00:00:00.000Z'),
     },
   });
 
   const capsuleInputs = [
     [
       CapsuleEntityType.OBJECTIVE,
-      relayObjective.id,
-      atlas.id,
-      '2038-09-14T06:00:00.000Z',
+      failoverObjective.id,
+      oncall.id,
+      '2025-08-06T14:30:00.000Z',
       Importance.CRITICAL,
       1,
     ],
     [
       CapsuleEntityType.OBJECTIVE,
-      sampleObjective.id,
-      atlas.id,
-      '2038-09-14T06:00:00.000Z',
+      contextObjective.id,
+      oncall.id,
+      '2025-08-06T14:30:00.000Z',
       Importance.HIGH,
       1,
     ],
     [
       CapsuleEntityType.OBSERVATION,
-      dustObservation.id,
-      nova.id,
-      '2038-09-16T04:12:00.000Z',
+      poolExhaustionObservation.id,
+      statuspage.id,
+      '2025-08-06T14:30:00.000Z',
       Importance.CRITICAL,
-      0.91,
+      0.97,
     ],
     [
       CapsuleEntityType.OBSERVATION,
-      orbitalObservation.id,
-      kepler.id,
-      '2038-09-16T05:04:00.000Z',
+      latencyObservation.id,
+      databasesre.id,
+      '2025-08-06T14:35:00.000Z',
+      Importance.HIGH,
+      0.94,
+    ],
+    [
+      CapsuleEntityType.OBSERVATION,
+      replicaHealthObservation.id,
+      infrastructure.id,
+      '2025-08-06T14:37:00.000Z',
+      Importance.HIGH,
+      0.96,
+    ],
+    [
+      CapsuleEntityType.HAZARD,
+      connectionPoolHazard.id,
+      infrastructure.id,
+      '2025-08-06T14:30:00.000Z',
+      Importance.CRITICAL,
+      0.94,
+    ],
+    [
+      CapsuleEntityType.REASONING,
+      failoverReasoning.id,
+      databasesre.id,
+      '2025-08-06T14:40:00.000Z',
       Importance.HIGH,
       0.88,
     ],
     [
-      CapsuleEntityType.OBSERVATION,
-      surfaceObservation.id,
-      sagan.id,
-      '2038-09-16T06:26:00.000Z',
+      CapsuleEntityType.DEBATE,
+      failoverDebate.id,
+      oncall.id,
+      '2025-08-06T14:42:00.000Z',
       Importance.HIGH,
-      0.84,
-    ],
-    [
-      CapsuleEntityType.HAZARD,
-      dustHazard.id,
-      nova.id,
-      '2038-09-16T04:20:00.000Z',
-      Importance.CRITICAL,
       0.9,
     ],
     [
-      CapsuleEntityType.REASONING,
-      routeReasoning.id,
-      kepler.id,
-      '2038-09-16T06:40:00.000Z',
-      Importance.HIGH,
-      0.79,
-    ],
-    [
-      CapsuleEntityType.DEBATE,
-      siteDebate.id,
-      atlas.id,
-      '2038-09-16T07:20:00.000Z',
-      Importance.HIGH,
-      0.82,
-    ],
-    [
       CapsuleEntityType.DECISION,
-      routeDecision.id,
-      atlas.id,
-      '2038-09-16T07:25:00.000Z',
+      failoverDecision.id,
+      oncall.id,
+      '2025-08-06T14:43:00.000Z',
       Importance.CRITICAL,
       0.95,
     ],
     [
       CapsuleEntityType.LESSON,
       lesson.id,
-      atlas.id,
-      '2038-09-16T08:10:00.000Z',
+      oncall.id,
+      '2025-08-06T14:45:00.000Z',
       Importance.HIGH,
-      0.81,
+      0.92,
     ],
   ] as const;
 
@@ -525,7 +537,7 @@ async function main() {
             occurredAt: at(occurredAt),
             importance,
             confidence,
-            embeddingReference: `embedding://ares-7/${referencedEntityType.toLowerCase()}/${referencedEntityId}`,
+            embeddingReference: `embedding://inc-4291/${referencedEntityType.toLowerCase()}/${referencedEntityId}`,
           },
         }),
     ),
@@ -537,12 +549,13 @@ async function main() {
       version: 1,
       isCurrent: true,
       summary:
-        'ARES-7 is active. The northern ridge route protects the next relay pass while preserving access to Site Kappa. Validate signal quality and slope before drilling.',
+        'INC-4291 is active: primary database connection pool exhaustion risks cascading outage. Failover to replica-east approved and safe. Replacement responder must inherit this hazard, failover decision, and investigation plan.',
       capsules: {
         create: capsules.map((capsule, index) => ({
           capsuleId: capsule.id,
           relevanceRank: index < 2 ? 100 - index : 90 - index,
-          inclusionReason: index < 2 ? 'Mission priority' : 'Current ARES-7 operational evidence',
+          inclusionReason:
+            index < 2 ? 'Incident objective' : 'Current INC-4291 operational evidence',
         })),
       },
     },
@@ -553,15 +566,16 @@ async function main() {
       missionId: mission.id,
       missionContextId: context.id,
       version: 1,
-      trigger: 'Material hazard change and authorized route decision',
+      trigger: 'Critical database hazard and authorized failover decision',
       summary:
-        'Continuity handoff after Sol 2 route decision: protect the relay pass via the northern ridge, then validate Site Kappa before drilling.',
+        'Continuity handoff during on-call rotation: primary database connection pool exhaustion detected and failover to replica-east approved. Replacement responder inherits hazard context and decision rationale.',
       unresolvedItems:
-        'Confirm next-pass signal-to-noise ratio and local ridge slope before descent.',
-      completenessNote: 'Includes all CRITICAL and HIGH capsules available at decision time.',
+        'Identify and fix root cause of connection pool leak; validate replica-east stability under full production load.',
+      completenessNote:
+        'Includes all CRITICAL and HIGH capsules available at failover-decision time.',
       status: SnapshotStatus.PUBLISHED,
-      generatedAt: at('2038-09-16T08:20:00.000Z'),
-      publishedAt: at('2038-09-16T08:22:00.000Z'),
+      generatedAt: at('2025-08-06T14:44:00.000Z'),
+      publishedAt: at('2025-08-06T14:46:00.000Z'),
       capsules: {
         create: capsules.map((capsule, inclusionOrder) => ({
           capsuleId: capsule.id,
@@ -576,20 +590,20 @@ async function main() {
       missionId: mission.id,
       referencedEntityType: CapsuleEntityType.MISSION_SNAPSHOT,
       referencedEntityId: snapshot.id,
-      authorAgentId: atlas.id,
-      occurredAt: at('2038-09-16T08:22:00.000Z'),
+      authorAgentId: oncall.id,
+      occurredAt: at('2025-08-06T14:46:00.000Z'),
       importance: Importance.HIGH,
       confidence: 1,
-      embeddingReference: `embedding://ares-7/mission-snapshot/${snapshot.id}`,
+      embeddingReference: `embedding://inc-4291/mission-snapshot/${snapshot.id}`,
     },
   });
 
-  console.log(`Seeded ${mission.code}: ${mission.name}`);
-  console.log(`Mission ID: ${mission.id}`);
+  console.log(`✓ Seeded ${mission.code}: ${mission.name}`);
+  console.log(`  Mission ID: ${mission.id}`);
   console.log('');
   console.log('Set this in your environment to run the demo:');
-  console.log(`  apps/web/.env.local  ->  NEXT_PUBLIC_MISSION_ID=${mission.id}`);
-  console.log(`  simulator            ->  MISSION_ID=${mission.id}`);
+  console.log(`  apps/web/.env.local    → NEXT_PUBLIC_MISSION_ID=${mission.id}`);
+  console.log(`  simulator              → MISSION_ID=${mission.id}`);
 }
 
 main()
