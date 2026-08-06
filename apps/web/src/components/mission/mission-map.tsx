@@ -10,10 +10,10 @@ import type { FleetAgent, TimelineItem } from '../../types/mission';
 // only ever adjusted by agents with a lexicographically smaller id, so when a
 // new agent (e.g. a replacement) joins mid-mission, every already-placed
 // marker stays exactly where it was.
-const MAP_BOUNDS = { left: [15, 78], top: [20, 72] } as const;
-const NUDGE_BOUNDS = { left: [10, 82], top: [14, 76] } as const;
-const MIN_MARKER_DISTANCE = 16;
-const MAX_NUDGE_ATTEMPTS = 8;
+const MAP_BOUNDS = { left: [8, 88], top: [45, 70] } as const;
+const NUDGE_BOUNDS = { left: [5, 92], top: [42, 73] } as const;
+const MIN_MARKER_DISTANCE = 22;
+const MAX_NUDGE_ATTEMPTS = 12;
 
 function hashString(value: string): number {
   let hash = 2166136261;
@@ -91,15 +91,15 @@ export function MissionMap({
               key={agent.id}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, scale: offline && highlightFailure ? [1, 1.18, 1] : 1 }}
-              className="absolute"
-              style={{ left: `${left}%`, top: `${top}%` }}
+              className="absolute flex flex-col items-center gap-1"
+              style={{ left: `${left}%`, top: `${top}%`, transform: 'translate(-50%, -50%)' }}
             >
+              <span className="whitespace-nowrap text-[10px] text-slate-200">
+                {agent.name}
+              </span>
               <span
                 className={`block h-3 w-3 rounded-full ring-4 ${offline ? 'bg-red-500 ring-red-500/20' : agent.status === 'REPLACEMENT' ? 'bg-emerald-400 ring-emerald-400/20' : 'bg-cyan ring-cyan/20'}`}
               />
-              <span className="mt-2 block whitespace-nowrap text-[10px] text-slate-200">
-                {agent.name}
-              </span>
             </motion.div>
           );
         })}
